@@ -54,10 +54,15 @@ Marsh McLennan is a global leader in insurance brokerage and risk management, he
 ## 🎯 The Challenge
 
 ### Project Summary
-In this project, you will use hospital emergency patient injury descriptions from the U.S. Consumer Product Safety Commission’s National Electronic Injury Surveillance System (CPSC NEISS), Natural Language Processing (NLP) and Large Language Model (LLM) techniques to extract the objects involved in injury incidents. This will help our company address the business problem of workplace and product-related injury prevention, reduce injury-related costs, and improve safety and loss-prevention strategies.
+In this project, you will use hospital emergency patient injury descriptions from the U.S. Consumer Product Safety Commission’s National Electronic Injury Surveillance System (CPSC NEISS), Natural Language Processing (NLP) and Large Language Model (LLM) techniques to extract the objects involved in injury incidents. This will help our company address the business problem of workplace and product-related injury prevention, reducing injury-related costs, and improving safety and loss prevention strategies.
 
 ### Success Criteria
-The model should be able to correctly extract and classify the objects mentioned in a testing set of anonymized workers' compensation accident descriptions. Success will also be measured by comparing the model's performance against the company's existing object detection model.
+We will provide the students with a final testing set of anonymized workers' compensation accident descriptions. Their model should be able to correctly extract and classify the objects mentioned in the descriptions.
+
+We will also compare it to our existing object detection model to see if the students' model performs favorably.
+
+### Stretch Goal
+If the students progress quickly enough, they can explore other fields mentioned in the NEISS (specifically NEISS Work) database.
 
 ### Project Milestones
 
@@ -69,11 +74,6 @@ Use these milestones to guide your work. Your team will create a **GitHub Projec
 | October | Entity Extraction, NLP Modeling & Risk Classification | • Implement Named Entity Recognition (NER) or fine-tune transformer models (e.g., BioBERT, RoBERTa) to extract target objects, injury mechanisms, and affected body parts from text narratives.<br>• Train advanced multi-class models (XGBoost, LightGBM, or BERT-based classifiers) to categorize product-related risk severity.<br>• Conduct hyperparameter tuning, cross-validation, and evaluate performance using Precision, Recall, and F1-Score. |
 | November / December | Model Interpretation, Interactive UI & Capstone Deliverables | • Apply model interpretability techniques (SHAP / LIME) to highlight key narrative trigger phrases driving product risk classifications.<br>• Build an interactive Streamlit application enabling users to input clinical narrative text and view real-time object detection and hazard severity scores.<br>• Finalize clean, reproducible GitHub repository, comprehensive technical documentation, and final presentation deck. |
 
-### Stretch Goals
-* **Automated Risk Trend Surveillance:** Build a temporal monitoring module to track emerging product hazards and spike patterns across NEISS reporting years.
-* **LLM Zero-Shot Narrative Structuring:** Integrate an LLM extraction pipeline to automatically parse unstructured ER narratives into structured JSON schemas containing product IDs, injury mechanics, and safety recommendations.
-* **Real-Time Risk Scoring API Endpoint:** Deploy a lightweight REST API (via FastAPI) allowing external risk assessment tools to query narrative text and receive structured object and hazard predictions.
-
 > **Note for the team:** Please create a GitHub Projects board in this repository to break these milestones into weekly tasks. Go to the **Projects** tab → **New project** → Choose **Board** → Add columns for each month.
 
 ---
@@ -83,26 +83,24 @@ Use these milestones to guide your work. Your team will create a **GitHub Projec
 **Name and Source:** National Electronic Injury Surveillance System (CPSC NEISS)  
 **Format:** Excel (.xlsx)  
 **Size:** 1gb to 5gb  
-**Location:** [Link to dataset or instructions for accessing it]
+**Location:** https://www.cpsc.gov/Research--Statistics/NEISS-Injury-Data
 
 ### Key Details
-- Publicly available text data from the U.S. Consumer Product Safety Commission’s National Electronic Injury Surveillance System (CPSC NEISS) stored in Excel (.xlsx) format. Source link: https://www.cpsc.gov/Research--Statistics/NEISS-Injury-Data
-- No significant known limitations or preprocessing needed.
+- [Brief description of what's in the data]
+- [Any known limitations or preprocessing needed]
 - [Link to data dictionary or documentation, if available]
 
 ---
 
 ## 🛠️ Suggested Approach
 
-**ML Problem Type:** Natural Language Processing (NLP)
+**ML Problem Type:** Classification, NLP,Large Language Models (LLMs)/ Generative AI
 
 **Recommended Libraries:**
-- Natural Language Processing (NLP)
-- Large Language Models (LLMs)/ Generative AI
-- Classification
+- [e.g., pandas, scikit-learn, TensorFlow, Hugging Face]
 
 **Evaluation Metrics:**
-- Accuracy, Precision/Recall
+- [e.g., Accuracy, Precision/Recall, RMSE, BLEU score]
 
 ---
 
@@ -111,16 +109,16 @@ Use these milestones to guide your work. Your team will create a **GitHub Projec
 The following resources will help your team understand the problem space and potential technical approaches for this project:
 
 **Background Reading:**
-- [Link to an article or blog post about the problem domain]
-- [Link to an industry report or case study]
+- [e.g., Link to an article or blog post about the problem domain]
+- [e.g., Link to an industry report or case study]
 
 **Technical Tutorials:**
-- [Link to a free tutorial on the ML technique(s) involved]
-- [Link to documentation for a key library or tool]
+- [e.g., Link to a free tutorial on the ML technique(s) involved]
+- [e.g., Link to documentation for a key library or tool]
 
 **Code Examples:**
-- [Link to a relevant GitHub repo]
-- [Link to a sample implementation or starter code]
+- [e.g., Link to a relevant GitHub repo]
+- [e.g., Link to a sample implementation or starter code]
 
 **Other:**
 - [Links to any additional resources — e.g., papers, videos, podcasts, etc.]
@@ -131,14 +129,19 @@ The following resources will help your team understand the problem space and pot
 
 ## 🤝 How We'll Work Together
 
-**Check-ins:** During our biweekly 60-min AI Studio Lab Section meeting block (2nd and 4th week of every month)  
-**Communication:** Slack (Break Through Tech workspace)  
-**Response time:** Within 48 hours on weekdays  
+**Official check-ins:** During our biweekly 45-minute AI Studio Lab Section meeting block (2nd and 4th week of every month)
 
-**Recommended Tools:**
-- **Coding:** Google Colab
-- **Collaboration:** GitHub, Notion
-- **Virtual Meetings:** Zoom, Google Meet
+ **Other ways to reach out to me with questions:** 
+* [e.g., Your team's channel within Break Through Tech’s Discord space]
+* [e.g., Email; please copy your teammates and AI Studio Coach]
+* [e.g., Request a team check-in on Zoom]
+* [Note: I will aim to respond within 48 hours. Please reach out to your AI Studio Coach with urgent questions.]
+
+> 💡 **Challenge Advisor: Please update the above based on your availability and preference. If you are not able to answer questions or meet with fellows outside of the biweekly Lab Section check-ins, simply write in "N/A (only available during the official check-in times)"**
+
+**Recommended free coding / collaboration tools**
+* […]
+* […]
 
 ---
 
@@ -148,10 +151,10 @@ The following resources will help your team understand the problem space and pot
 2. **Begin reviewing the dataset** using the link above
 3. **Read the GitHub Projects documentation** [here](https://docs.github.com/en/issues/planning-and-tracking-with-projects/learning-about-projects/about-projects)
 
-I'm excited to work with you!
+I’m excited to work with you!
 
 ---
 
 ## ❓ Questions?
 
-Please bring any questions to our first meeting during the week of August 24th (Break Through Tech's Bridge to Studio - Session B).
+Please bring any questions to our first meeting during the week of August 24th (Break Through Tech’s Bridge to Studio - Session C). 
