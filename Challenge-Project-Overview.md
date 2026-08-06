@@ -69,10 +69,10 @@ If the students progress quickly enough, they can explore other fields mentioned
 Use these milestones to guide your work. Your team will create a **GitHub Projects board** to track tasks within each milestone.
 
 | Month | Milestone | Key Activities |
-| :--- | :--- | :--- |
-| September | Data Ingestion, Preprocessing & Baseline Text Classification | • Ingest and clean National Electronic Injury Surveillance System (NEISS) emergency room narrative datasets.<br>• Perform Exploratory Data Analysis (EDA) on product codes, injury narratives, demographics, and severity classifications.<br>• Preprocess text narratives (tokenization, lemmatization, stop-word removal) and extract baseline TF-IDF / keyword features.<br>• Train baseline classifiers (Logistic Regression / Naive Bayes) to identify involved consumer products and hazards. |
-| October | Entity Extraction, NLP Modeling & Risk Classification | • Implement Named Entity Recognition (NER) or fine-tune transformer models (e.g., BioBERT, RoBERTa) to extract target objects, injury mechanisms, and affected body parts from text narratives.<br>• Train advanced multi-class models (XGBoost, LightGBM, or BERT-based classifiers) to categorize product-related risk severity.<br>• Conduct hyperparameter tuning, cross-validation, and evaluate performance using Precision, Recall, and F1-Score. |
-| November / December | Model Interpretation, Interactive UI & Capstone Deliverables | • Apply model interpretability techniques (SHAP / LIME) to highlight key narrative trigger phrases driving product risk classifications.<br>• Build an interactive Streamlit application enabling users to input clinical narrative text and view real-time object detection and hazard severity scores.<br>• Finalize clean, reproducible GitHub repository, comprehensive technical documentation, and final presentation deck. |
+|---|---|---|
+| September | [Title] | students have downloaded and explored the data, and they have a final plan for their model's logic |
+| October | [Title] | students have produced a v1 for their model and they have some initial model validation results |
+| November | [Title] | students have made improvements on their model. the final version can correctly extract and classify objects mentioned in workers' accident descriptions. |
 
 > **Note for the team:** Please create a GitHub Projects board in this repository to break these milestones into weekly tasks. Go to the **Projects** tab → **New project** → Choose **Board** → Add columns for each month.
 
