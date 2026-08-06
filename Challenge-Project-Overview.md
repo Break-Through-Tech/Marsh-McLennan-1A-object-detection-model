@@ -64,10 +64,15 @@ The model should be able to correctly extract and classify the objects mentioned
 Use these milestones to guide your work. Your team will create a **GitHub Projects board** to track tasks within each milestone.
 
 | Month | Milestone | Key Activities |
-|-------|-----------|----------------|
-| **September** | Data Understanding | Explore dataset, handle missing values, document findings |
-| **October** | Model Development | Train baseline model, experiment with approaches, iterate |
-| **November** | Evaluation & Presentation | Finalize model, prepare presentation, document results |
+| :--- | :--- | :--- |
+| September | Data Ingestion, Preprocessing & Baseline Text Classification | • Ingest and clean National Electronic Injury Surveillance System (NEISS) emergency room narrative datasets.<br>• Perform Exploratory Data Analysis (EDA) on product codes, injury narratives, demographics, and severity classifications.<br>• Preprocess text narratives (tokenization, lemmatization, stop-word removal) and extract baseline TF-IDF / keyword features.<br>• Train baseline classifiers (Logistic Regression / Naive Bayes) to identify involved consumer products and hazards. |
+| October | Entity Extraction, NLP Modeling & Risk Classification | • Implement Named Entity Recognition (NER) or fine-tune transformer models (e.g., BioBERT, RoBERTa) to extract target objects, injury mechanisms, and affected body parts from text narratives.<br>• Train advanced multi-class models (XGBoost, LightGBM, or BERT-based classifiers) to categorize product-related risk severity.<br>• Conduct hyperparameter tuning, cross-validation, and evaluate performance using Precision, Recall, and F1-Score. |
+| November / December | Model Interpretation, Interactive UI & Capstone Deliverables | • Apply model interpretability techniques (SHAP / LIME) to highlight key narrative trigger phrases driving product risk classifications.<br>• Build an interactive Streamlit application enabling users to input clinical narrative text and view real-time object detection and hazard severity scores.<br>• Finalize clean, reproducible GitHub repository, comprehensive technical documentation, and final presentation deck. |
+
+### Stretch Goals
+* **Automated Risk Trend Surveillance:** Build a temporal monitoring module to track emerging product hazards and spike patterns across NEISS reporting years.
+* **LLM Zero-Shot Narrative Structuring:** Integrate an LLM extraction pipeline to automatically parse unstructured ER narratives into structured JSON schemas containing product IDs, injury mechanics, and safety recommendations.
+* **Real-Time Risk Scoring API Endpoint:** Deploy a lightweight REST API (via FastAPI) allowing external risk assessment tools to query narrative text and receive structured object and hazard predictions.
 
 > **Note for the team:** Please create a GitHub Projects board in this repository to break these milestones into weekly tasks. Go to the **Projects** tab → **New project** → Choose **Board** → Add columns for each month.
 
