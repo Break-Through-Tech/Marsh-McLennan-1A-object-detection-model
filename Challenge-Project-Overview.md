@@ -41,6 +41,7 @@ The project leverages real-world data, providing a valuable learning opportunity
 
 **Company / Org:** Marsh Mclennan  
 **Challenge Advisor:** Kamraan Kamal, kamraan.kamal@marsh.com  
+**AI Studio Coach:** Ayush Amberkar, ayush.amberkar@breakthroughtech.org     
 **Program:** Break Through Tech AI Studio - Fall 2026
 
 ---
