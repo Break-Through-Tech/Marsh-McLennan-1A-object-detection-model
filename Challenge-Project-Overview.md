@@ -87,9 +87,8 @@ Use these milestones to guide your work. Your team will create a **GitHub Projec
 **Location:** https://www.cpsc.gov/Research--Statistics/NEISS-Injury-Data
 
 ### Key Details
-- [Brief description of what's in the data]
-- [Any known limitations or preprocessing needed]
-- [Link to data dictionary or documentation, if available]
+- Link to data documentation and how to query database:
+- https://www.cpsc.gov/Research--Statistics/NEISS-Injury-Data
 
 ---
 
@@ -98,7 +97,9 @@ Use these milestones to guide your work. Your team will create a **GitHub Projec
 **ML Problem Type:** Classification, NLP,Large Language Models (LLMs)/ Generative AI
 
 **Recommended Libraries:**
-- [e.g., pandas, scikit-learn, TensorFlow, Hugging Face]
+-  LLM/Generative AI (ex: OpenAI Api) 
+- Natural Language Toolkit 
+- SpaCy
 
 **Evaluation Metrics:**
 - [e.g., Accuracy, Precision/Recall, RMSE, BLEU score]
@@ -110,12 +111,13 @@ Use these milestones to guide your work. Your team will create a **GitHub Projec
 The following resources will help your team understand the problem space and potential technical approaches for this project:
 
 **Background Reading:**
-- [e.g., Link to an article or blog post about the problem domain]
-- [e.g., Link to an industry report or case study]
+- Link to NEISS Data Documentation and Query Instructions: https://www.cpsc.gov/Research--Statistics/NEISS-Injury-Data (same link can also go under Dataset: Key Details)
 
 **Technical Tutorials:**
-- [e.g., Link to a free tutorial on the ML technique(s) involved]
-- [e.g., Link to documentation for a key library or tool]
+- Using the Open AI API  : https://realpython.com/chatgpt-api-python/#create-an-openai-client
+- Students will need to provide their own subscription/api keys 
+- Using NLTK : https://www.nltk.org/
+- Using SpaCY: https://spacy.io/usage/spacy-101
 
 **Code Examples:**
 - [e.g., Link to a relevant GitHub repo]
@@ -133,16 +135,14 @@ The following resources will help your team understand the problem space and pot
 **Official check-ins:** During our biweekly 45-minute AI Studio Lab Section meeting block (2nd and 4th week of every month)
 
  **Other ways to reach out to me with questions:** 
-* [e.g., Your team's channel within Break Through Tech’s Discord space]
-* [e.g., Email; please copy your teammates and AI Studio Coach]
-* [e.g., Request a team check-in on Zoom]
+* [Discord, Email (kamraan.kamal@marsh.com)]
 * [Note: I will aim to respond within 48 hours. Please reach out to your AI Studio Coach with urgent questions.]
 
 > 💡 **Challenge Advisor: Please update the above based on your availability and preference. If you are not able to answer questions or meet with fellows outside of the biweekly Lab Section check-ins, simply write in "N/A (only available during the official check-in times)"**
 
 **Recommended free coding / collaboration tools**
-* […]
-* […]
+* [Google Collab]
+* [Github]
 
 ---
 
