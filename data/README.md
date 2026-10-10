@@ -41,4 +41,4 @@ neiss2025 1(NEISS_2025).csv
 neiss2025 1(NEISS_FMT).csv
 ```
 
-`notebooks/object_detection_model.ipynb` loads the two CSVs by these exact names.
+`notebooks/milestone1_eda.ipynb` loads the two CSVs by these exact names.

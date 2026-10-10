@@ -97,6 +97,8 @@ Better object extraction helps Marsh find which objects and products drive workp
 
 ## 🧠 **Model Development**
 
+Full plan: [reports/model_logic_plan.md](reports/model_logic_plan.md)
+
 Planned pipeline (v1 is in progress):
 
 ```
