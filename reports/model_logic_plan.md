@@ -20,7 +20,7 @@ Given a short free-text injury narrative, extract the object involved and map it
 | Finding | Design decision |
 |---|---|
 | Median narrative is 114 characters (21 words). | Context length is not a concern. Cost depends on case count, so batch narratives when calling an LLM. |
-| 99.81% start with an age/sex token (`47YOF`). 74.4% contain a `DX:` diagnosis segment. The segment after `DX:` describes the injury, not the object, and holds bait words such as FALL and FOREIGN BODY. | Split each narrative into prefix, event clause, and diagnosis. Feed the model the event clause only. |
+| 99.81% start with an age/sex token (`47YOF`, but also `59 YOF` with a space and `15MOF` for months). 99.9% contain a `DX` marker, and only 74.4% write it with a colon. The segment after `DX` describes the injury, not the object, and holds bait words such as FALL and FOREIGN BODY. | Split each narrative into prefix, event clause, and diagnosis. Feed the model the event clause only. |
 | 100% of narratives are uppercase. Most pretrained NER models degrade on all-caps text. | Test case normalization of the event clause as a preprocessing option and keep whichever scores higher on validation. |
 | Shorthand such as `C/O` and `PT` is common. Some words are redacted with `***` (3.2%). | Expand `C/O` and `PT` (verified in Task #6). Leave other abbreviations unchanged. Keep the raw narrative column untouched. |
 | `Product_1` has 767 classes. The top 157 cover 90% of records. 250 classes have fewer than 20 cases (0.44% of rows). | Merge classes under 20 cases into `OTHER`. Report macro-F1 with and without the tail. |
@@ -43,7 +43,7 @@ Narrative_1
   -> predicted set of product codes
 ```
 
-1. **Preprocess.** Collapse whitespace, expand `C/O` and `PT`, split off the age/sex prefix and the `DX:` segment, and keep the event clause. Optionally normalize case.
+1. **Preprocess.** Collapse whitespace, expand `C/O` and `PT`, split off the age/sex prefix (allowing a space and month-old forms) and the diagnosis segment (match `DX` with or without a colon), and keep the event clause. Optionally normalize case.
 2. **Extract.** Run GLiNER on the event clause with a small set of object labels (for example object, tool, furniture, sports equipment, structure). The label set and the score threshold are tuned on the validation fold. GLiNER needs no labeled training set and runs locally.
 3. **Clean up.** Use spaCy to lemmatize spans and handle plurals. Rules drop spans that are body parts, people, or injury words.
 4. **Map to a NEISS code.** The NEISS taxonomy (`NEISS_FMT`, 1,124 codes) uses wording that clinicians do not type (FOOTWEAR vs "shoe", JEWELRY vs "ring"). Mapping uses two layers:
