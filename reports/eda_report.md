@@ -14,7 +14,7 @@ splitting.
 
 - [1. Dataset overview](#1-dataset-overview)
 - [2. Narrative length](#2-narrative-length)
-- [3. Narrative structure](#3-narrative-structure)
+- [3. Narrative structure and preprocessing](#3-narrative-structure-and-preprocessing)
 - [4. Label structure: product codes](#4-label-structure-product-codes)
 - [5. Is the object named in the narrative?](#5-is-the-object-named-in-the-narrative)
 - [6. The consumer-vs-workplace domain gap](#6-the-consumer-vs-workplace-domain-gap)
@@ -27,7 +27,7 @@ splitting.
 
 ## 1. Dataset overview
 
-**Source file:** `data/neiss2025.xlsx`
+**Source file:** `data/raw/neiss2025.xlsx`
 
 - **Rows:** 410,201
 - **Columns:** 25
@@ -84,7 +84,7 @@ Note: `% populated` counts non-empty cells only. Several NEISS fields use a sent
 - At or near the 400-char cap: **292 (0.07%)** - truncation is not a practical concern
 - Under 40 characters: **3,016 (0.74%)**
 
-**Why this matters:** at a median of 21 words, every narrative fits comfortably in any model's context window. Cost and latency will be driven by the number of cases, not by document length, so batching many narratives per request is the lever that matters.
+**Why this matters:** at a median of 21 words, every narrative fits comfortably in GLiNER's input window, so no narrative needs to be split or truncated before extraction. Run time will be driven by the number of cases, not by document length, so batching narratives through the model is the lever that matters.
 
 #### Distribution
 
@@ -109,7 +109,7 @@ Note: `% populated` counts non-empty cells only. Several NEISS fields use a sent
 
 ---
 
-## 3. Narrative structure
+## 3. Narrative structure and preprocessing
 
 These narratives are formulaic, not free prose. Most follow the shape:
 
@@ -173,6 +173,34 @@ These narratives are formulaic, not free prose. Most follow the shape:
 - Median sentence count: **1**
 - Text after `DX:` runs a median of **20 characters**. This segment describes the *injury*, not the object, and contains bait words like FALL and FOREIGN BODY. Consider splitting it off and feeding the model the event clause only.
 - Unique narratives: **409,099 of 410,201**. The repeats are short generic cases (e.g. teenagers spraining ankles at basketball), not data corruption.
+
+#### Preprocessing applied (Task #6)
+
+The cleaning rules live in `src/preprocess.py`, shared by the notebook, this report and the model code, so Marsh's narratives are cleaned exactly like the training data. The raw `Narrative_1` is never modified; the results are the `narrative_normalized`, `event_text`, `diagnosis_text` and `redacted` columns in `data/processed/neiss2025_clean.csv`.
+
+| step | narratives changed | share |
+|---|---|---|
+| Collapse repeated whitespace | 91,832 | 22.39% |
+| C/O -> COMPLAINTS OF | 39,299 | 9.58% |
+| S/P -> STATUS POST | 18,598 | 4.53% |
+| W/O -> WITHOUT | 1,928 | 0.47% |
+| W/ -> WITH | 5,960 | 1.45% |
+| PT -> PATIENT | 45,374 | 11.06% |
+| BIBEMS -> BROUGHT IN BY EMS | 1,073 | 0.26% |
+| FB -> FOREIGN BODY | 3,129 | 0.76% |
+| FX -> FRACTURE | 19,999 | 4.88% |
+| LAC -> LACERATION | 13,645 | 3.33% |
+| CHI -> CLOSED HEAD INJURY | 8,691 | 2.12% |
+| Any abbreviation expanded | 120,625 | 29.41% |
+| Diagnosis split off into its own column | 408,511 | 99.59% |
+| Flagged as containing a redaction (*) | 13,149 | 3.21% |
+
+Example:
+
+- before: `47YOF C/O RIGHT LEG LACERATION. WAS GETTING INTO BED THIS EVENING AND TRIPPED HITTING HER LEFT LEG CONDITIONER THAT WAS `
+- after:  `47YOF COMPLAINTS OF RIGHT LEG LACERATION. WAS GETTING INTO BED THIS EVENING AND TRIPPED HITTING HER LEFT LEG CONDITIONER`
+
+Deliberately left unchanged: age/sex codes (`YOM`, `YOF`, `MOM`, `MOF`), which are structured conventions (`MOM` can mean "month-old male" or "mother"); `DX`, kept as the split marker; and `R`/`L`, `INJ` and `LOC`, which have more than one meaning. Text is tokenized without stop-word removal or stemming, since GLiNER works on natural text.
 
 ---
 
@@ -306,7 +334,7 @@ Method: for each of the top 25 products, match the narrative against keywords dr
 **Two different problems are mixed together here:**
 
 1. **Vocabulary mismatch** - the object is named, but not with the taxonomy's word. A lexicon or embedding lookup solves this. It is why the `curated` rows exist.
-2. **Genuine inference** - the object is never named and a human coder inferred it from the activity. No lexicon solves this; it needs a model with world knowledge, which is the strongest argument in the data for the LLM approach in the project brief.
+2. **Genuine inference** - the object is never named and a human coder inferred it from the activity. No lexicon solves this; it needs a model with world knowledge. Expect GLiNER to miss most of these, since it extracts spans that are actually in the text.
 
 Examples of category 2:
 
@@ -372,7 +400,7 @@ The `Location` field above understates how usable this data is. The NEISS produc
 Read that table in two columns, because they say different things:
 
 - **`codes in taxonomy`** - the label space is in good shape. Only PALLET and CRANE have no code at all. Ladders get seven codes, grinders nine. NEISS can express most workers'-comp answers.
-- **`cases in this file`** - the *examples* are thin to absent. Ladders are fine at ~3,900. But FORK LIFT and CONVEYOR have a code and **zero cases in this year**, and sanders, air compressors and scaffolding sit in the dozens. You cannot learn a class from zero examples no matter how good the model is.
+- **`cases in this file`** - the *examples* are thin to absent. Ladders are fine at ~3,900. But FORK LIFT and CONVEYOR have a code and **zero cases in this year**, sanders and air compressors sit in the dozens, and scaffolding is just over a hundred. You cannot learn a class from zero examples no matter how good the model is.
 
 So this is mostly a **training-distribution** problem rather than a **label-space** problem, which is the better of the two to have: a missing label space would mean the taxonomy cannot express the answer and the project needs a different target, whereas a skewed distribution has ordinary fixes. The zero-case rows are the real warning, and they are the concrete argument for pooling years or getting NEISS-Work.
 
@@ -575,7 +603,7 @@ Build a second, ordinary split stratified on `Product_1`. Train the same model o
 ### Step 4 - Balance exposure during training
 
 - **Fine-tuned / classical classifier:** use class weights in the loss (`class_weight='balanced'`, or `1/sqrt(frequency)` which is less aggressive and usually behaves better across 700+ classes), or a class-balanced batch sampler. Either gives FLOORS and NAIL GUNS comparable influence per step without inventing data.
-- **LLM prompting:** "balancing" means **few-shot exemplar selection**. Draw exemplars stratified across product groups, not from the head of the distribution, or the model will anchor on floors and beds. Keep the exemplar pool strictly inside the training fold.
+- **Zero-shot extraction (GLiNER, the current plan):** there is no training loss to weight, so balancing applies to evaluation. Report per-class and macro scores, and when picking narratives to review or tune entity labels on, sample across product groups rather than from the head of the distribution, and only from the training fold.
 
 ### Step 5 - Deduplicate across the fold boundary
 
