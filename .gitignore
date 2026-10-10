@@ -1,1 +1,26 @@
+# Data files (download from https://www.cpsc.gov/Research--Statistics/NEISS-Injury-Data)
+data/*.xlsx
+data/*.xls
+data/*.csv
+!data/.gitkeep
 
+# Python environments
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+
+# Jupyter
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+
+# Environment Variables
+.env
+
+# Saved model weights (GLiNER downloads its own to ~/.cache/huggingface)
+*.pt
+*.safetensors
+
+# macOS
+.DS_Store

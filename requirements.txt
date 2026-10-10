@@ -1,1 +1,20 @@
+# Marsh McLennan 1A - Object Detection from NEISS Injury Narratives
+# Install with:  pip install -r requirements.txt
 
+# --- Data handling ---
+pandas>=2.2
+numpy>=1.26
+openpyxl>=3.1          # reads the NEISS .xlsx
+
+# --- Visualization (EDA) ---
+matplotlib>=3.8
+seaborn>=0.13
+
+# --- NLP ---
+gliner>=0.2            # zero-shot extraction of the product/object (pulls in torch)
+spacy>=3.7             # preprocessing, normalization, rule-based cleanup
+# After installing, also run:  python -m spacy download en_core_web_sm
+
+# --- Notebook environment ---
+jupyter>=1.0
+ipykernel>=6.29
