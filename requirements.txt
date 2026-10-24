@@ -1,4 +1,5 @@
 # Marsh McLennan 1A - Object Detection from NEISS Injury Narratives
+   # Use Python 3.12. Python 3.15 failed to install spaCy and NumPy.
 # Install with:  pip install -r requirements.txt
 
 # --- Data handling ---
@@ -13,6 +14,8 @@ seaborn>=0.13
 # --- NLP ---
 gliner>=0.2            # zero-shot extraction of the product/object (pulls in torch)
 spacy>=3.7             # preprocessing, normalization, rule-based cleanup
+   protobuf               # needed by the GLiNER tokenizer
+   sentencepiece          # needed by the GLiNER tokenizer
 # After installing, also run:  python -m spacy download en_core_web_sm
 
 # --- Notebook environment ---
