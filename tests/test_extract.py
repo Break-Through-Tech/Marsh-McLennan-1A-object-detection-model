@@ -119,3 +119,75 @@ def test_passthrough_columns_and_cli(tmp_path, monkeypatch):
     result = pd.read_csv(csv_out)
     assert len(result) == 3
     assert {"case_number", "event_text", "extracted_object", "product_code"} <= set(result.columns)
+
+
+# ---------------------------------------------------------------- Task #9 rules
+
+class StaticModel:
+    """Returns the same entities for every text."""
+
+    def __init__(self, entities):
+        self.entities = entities
+
+    def predict_entities(self, text, labels, threshold=0.5):
+        return list(self.entities)
+
+
+def ent(text, score=0.6):
+    return {"text": text, "label": "object", "score": score, "start": 0, "end": 0}
+
+
+def run_one(narrative, entities=(), **config):
+    df = pd.DataFrame({"case_number": [1], "narrative": [narrative]})
+    out = extract.run(df, StaticModel(list(entities)), ExtractionConfig(**config))
+    return out.loc[0]
+
+
+def test_fall_with_no_object_defaults_to_floor():
+    row = run_one("70YOF FELL LAST NIGHT AT HOME IN HER KITCHEN. DX ULNA AND RADIUS FX")
+    assert row["extracted_object"] == "FLOOR"
+    assert row["extracted_entity_type"] == extract.FLOOR_ENTITY_TYPE
+
+
+def test_floor_mention_without_a_fall_word():
+    row = run_one("21YOM HAD SEIZURE WHILE STANDING AND HIT BACK OF HEAD ON TILE FLOOR DX: CHI")
+    assert row["extracted_object"] == "FLOOR"
+
+
+def test_dropped_place_span_then_floor_default():
+    text = "81YOF PT C/O DIZZINESS CAUSING A FALL ON WAY TO BATHROOM, FOUND ON THE FLOOR DX: COVID 19"
+    assert run_one(text, [ent("BATHROOM")])["extracted_object"] == "FLOOR"
+
+
+def test_dropped_vehicle_exposes_next_candidate():
+    text = "28YOM PT WAS AN UNHELMETED BICYCLE RIDER, STRUCK BY A CAR WHILE RIDING BIKE DX; CONTUSION"
+    row = run_one(text, [ent("CAR", 0.9), ent("BICYCLE", 0.4)])
+    assert row["extracted_object"] == "BICYCLE"
+
+
+def test_stoplist_matches_the_whole_span_only():
+    row = run_one("2YOM FELL OUT OF A CAR SEAT DX: CONTUSION", [ent("car seat")])
+    assert row["extracted_object"] == "car seat"
+
+
+def test_no_floor_default_for_outdoor_falls_or_crashes():
+    assert run_one("44YOM FELL ON THE SIDEWALK DX: SPRAIN")["extracted_object"] == "OTHER"
+    pond = "11YOF PRESENTS AFTER A FALL WHILE ICE SKATING ON A POND DX: TORUS FRACTURE"
+    assert run_one(pond, [ent("POND")])["extracted_object"] == "OTHER"
+    crash = "33YOM ON MOPED WAS HIT BY A CAR IN AN INTERSECTION AND FELL ONTO RIGHT SIDE DX: KNEE PAIN"
+    assert run_one(crash, [ent("INTERSECTION")])["extracted_object"] == "OTHER"
+
+
+def test_no_floor_default_when_text_is_redacted_or_fell_asleep():
+    assert run_one("2YOM WAS WALKING IN SIBLINGS *** AND SUSTAINED FALL DX: LIMP")["extracted_object"] == "OTHER"
+    assert run_one("SHE FELL ASLEEP HOLDING THE BABY DX: NONE")["extracted_object"] == "OTHER"
+
+
+def test_a_model_span_beats_the_floor_default():
+    row = run_one("70YOM FELL DOWN STEPS. DX: FX", [ent("STEPS")])
+    assert row["extracted_object"] == "STEPS"
+
+
+def test_floor_default_can_be_switched_off():
+    row = run_one("70YOF FELL AT HOME. DX: FX", fallback_rule=None)
+    assert row["extracted_object"] == "OTHER"
