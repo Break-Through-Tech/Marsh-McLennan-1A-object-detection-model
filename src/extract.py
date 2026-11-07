@@ -13,14 +13,16 @@ What to swap, and where:
     prompt    ExtractionConfig.labels (the entity labels GLiNER is asked for),
               .threshold, .model_name
     input     ExtractionConfig.text_field ("event" or "normalized"), .lowercase
-    rules     ExtractionConfig.keep_entity (drop unwanted spans) and
-              .choose_entity (pick one span out of several)
+    rules     ExtractionConfig.keep_entity (drop unwanted spans),
+              .choose_entity (pick one span out of several) and
+              .fallback_rule (what to output when no span survives)
 Cleaning rules live in src/preprocess.py and are shared with the EDA notebook.
 """
 
 from __future__ import annotations
 
 import argparse
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, NamedTuple, Optional, Sequence
@@ -56,15 +58,36 @@ PASSTHROUGH_COLUMNS = [
     "psu",
 ]
 
-# Starter rule: spans that are people or body parts, never the product.
-# Edit freely; this is meant to grow as error analysis (Task 8) finds patterns.
-DROP_SPANS = frozenset(
-    {
-        "head", "face", "eye", "eyes", "nose", "mouth", "ear", "neck", "arm", "hand",
-        "finger", "thumb", "leg", "knee", "ankle", "foot", "toe", "back", "chest",
-        "shoulder", "wrist", "elbow", "hip",
-        "brother", "sister", "mother", "father", "friend", "son", "daughter", "patient",
-    }
+# Rule 1 (Task #9): spans that are never the product. Exact match on the whole
+# span, so "car seat" or "bed frame" are kept. Edit freely; the lists grow as
+# error analysis finds patterns.
+PEOPLE = {"brother", "sister", "mother", "father", "friend", "son", "daughter", "patient"}
+BODY_PARTS = {
+    "head", "face", "eye", "eyes", "nose", "mouth", "ear", "neck", "arm", "hand",
+    "finger", "thumb", "leg", "knee", "ankle", "foot", "toe", "back", "chest",
+    "shoulder", "wrist", "elbow", "hip", "tailbone", "forehead", "scalp", "chin",
+    "lip", "tooth", "teeth", "rib", "ribs", "spine", "skull", "thigh", "calf",
+    "heel", "palm", "fingers", "toes", "lower back", "upper back", "buttocks",
+}
+PLACES = {
+    "bathroom", "kitchen", "bedroom", "room", "intersection", "pond", "road",
+    "street", "yard", "home", "house", "hospital", "school", "store", "outside",
+}
+OTHER_PARTY_VEHICLES = {"car", "truck", "vehicle", "motor vehicle", "suv", "van", "bus"}
+IMPLANTED_DEVICES = {"prosthetic device", "prosthesis", "pacemaker", "implant"}
+DROP_SPANS = frozenset(PEOPLE | BODY_PARTS | PLACES | OTHER_PARTY_VEHICLES | IMPLANTED_DEVICES)
+
+# Rule 3 (Task #9): labeling rule 4 says a fall with no named object is a floor.
+FLOOR = "FLOOR"
+FLOOR_ENTITY_TYPE = "rule: floor default"
+_FLOOR_WORD = re.compile(r"\bFLOORS?\b", re.IGNORECASE)
+_FALL_WORDS = re.compile(r"\b(FELL|FALL|FALLS|FALLING|FALLEN|TRIPPED|SLIPPED|SLIP)\b", re.IGNORECASE)
+_FELL_ASLEEP = re.compile(r"\bFELL ASLEEP\b", re.IGNORECASE)
+# Outdoor ground is not a product (labeling rule 4), and crashes are not floor falls.
+_NOT_A_FLOOR_FALL = re.compile(
+    r"\b(OUTSIDE|OUTDOORS?|SIDEWALK|DRIVEWAY|ROAD|STREET|INTERSECTION|PARKING LOT|GRASS|DIRT|"
+    r"ICE|SNOW|CURB|GROUND|CONCRETE|PAVEMENT|ASPHALT|CAR|TRUCK|VEHICLE|CRASHED|COLLISION|MVA)\b",
+    re.IGNORECASE,
 )
 
 
@@ -84,6 +107,22 @@ def default_choose_entity(entities: Sequence[dict]) -> dict:
     return max(entities, key=lambda e: float(e["score"]))
 
 
+def floor_for_falls(text: str) -> Optional["Extraction"]:
+    """Rule 3: when no object was found, a described fall defaults to floor.
+
+    Fires when the text mentions a floor, or describes a fall that is not
+    outdoors or a crash. It never fires on redacted text (a *** may hide the
+    real object).
+    """
+    if "*" in text:
+        return None
+    if _FLOOR_WORD.search(text):
+        return Extraction(FLOOR, FLOOR_ENTITY_TYPE, None)
+    if _FALL_WORDS.search(_FELL_ASLEEP.sub("", text)) and not _NOT_A_FLOOR_FALL.search(text):
+        return Extraction(FLOOR, FLOOR_ENTITY_TYPE, None)
+    return None
+
+
 @dataclass(frozen=True)
 class ExtractionConfig:
     model_name: str = DEFAULT_MODEL
@@ -95,6 +134,9 @@ class ExtractionConfig:
     fallback: str = FALLBACK
     keep_entity: Callable[[dict], bool] = default_keep_entity
     choose_entity: Callable[[Sequence[dict]], dict] = default_choose_entity
+    # Called with the model text when no span survives; return an Extraction or None.
+    # Set to None to switch the floor default off.
+    fallback_rule: Optional[Callable[[str], Optional["Extraction"]]] = floor_for_falls
 
 
 def prepare_text(narratives: pd.Series, config: ExtractionConfig) -> pd.DataFrame:
@@ -147,7 +189,8 @@ def predict_entities(model, texts: list, config: ExtractionConfig, progress: boo
 def extract_objects(
     texts: Sequence[str], model, config: ExtractionConfig, progress: bool = False
 ) -> list:
-    """One Extraction per text. Blank text, or no surviving span, gives the fallback."""
+    """One Extraction per text. Blank text gives the fallback; no surviving span tries
+    config.fallback_rule, then the fallback."""
     texts = list(texts)
     out = [Extraction(config.fallback, None, None)] * len(texts)
     todo = [i for i, t in enumerate(texts) if t and t.strip()]
@@ -158,6 +201,10 @@ def extract_objects(
         if kept:
             best = config.choose_entity(kept)
             out[i] = Extraction(best["text"].strip(), best["label"], float(best["score"]))
+        elif config.fallback_rule is not None:
+            ruled = config.fallback_rule(texts[i])
+            if ruled is not None:
+                out[i] = ruled
     return out
 
 
