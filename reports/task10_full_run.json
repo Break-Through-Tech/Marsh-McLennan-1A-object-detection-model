@@ -1,0 +1,47 @@
+{
+  "input_rows": 410201,
+  "output_rows": 410201,
+  "runtime_seconds": 21448.28,
+  "rows_per_second": 19.13,
+  "fallback_label": "OTHER",
+  "fallback_rows": 52436,
+  "fallback_pct": 12.78,
+  "floor_rule_rows": 56045,
+  "failed_rows": 0,
+  "failed_case_numbers": [],
+  "top_objects": {
+    "FLOOR": 61076,
+    "OTHER": 52436,
+    "BED": 13804,
+    "STAIRS": 10747,
+    "CHAIR": 9524,
+    "WALL": 8353,
+    "COUCH": 6014,
+    "BASKETBALL": 5625,
+    "KNIFE": 5143,
+    "DOOR": 5025,
+    "TABLE": 4374,
+    "STEPS": 3890,
+    "TOILET": 2712,
+    "HELMET": 2687,
+    "BALL": 2669,
+    "TRAMPOLINE": 2328,
+    "BICYCLE": 2209,
+    "LADDER": 2157,
+    "SCOOTER": 2080,
+    "FOOTBALL": 2075
+  },
+  "config": {
+    "model": "urchade/gliner_medium-v2.1",
+    "labels": [
+      "object",
+      "tool",
+      "furniture",
+      "sports equipment",
+      "structure"
+    ],
+    "threshold": 0.3,
+    "text_field": "event",
+    "batch_size": 32
+  }
+}

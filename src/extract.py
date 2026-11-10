@@ -22,7 +22,9 @@ Cleaning rules live in src/preprocess.py and are shared with the EDA notebook.
 from __future__ import annotations
 
 import argparse
+import json
 import re
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, NamedTuple, Optional, Sequence
@@ -250,6 +252,46 @@ def load_clean(path: Path, sample: Optional[int] = None, seed: int = 100) -> pd.
     return df.reset_index(drop=True)
 
 
+def summarize_run(
+    result: pd.DataFrame,
+    input_rows: int,
+    elapsed_seconds: float,
+    config: ExtractionConfig,
+    top_n: int = 20,
+) -> dict:
+    """Run statistics: row counts, runtime, fallback rate, failed rows, top objects.
+
+    A row "failed" when its extracted_object is missing or blank. A fallback
+    row (OTHER) is a valid output, counted separately.
+    """
+    obj = result["extracted_object"]
+    failed = obj.isna() | (obj.astype(str).str.strip() == "")
+    fallback = int((obj == config.fallback).sum())
+    n = len(result)
+    return {
+        "input_rows": int(input_rows),
+        "output_rows": int(n),
+        "runtime_seconds": round(float(elapsed_seconds), 2),
+        "rows_per_second": round(n / elapsed_seconds, 2) if elapsed_seconds > 0 else None,
+        "fallback_label": config.fallback,
+        "fallback_rows": fallback,
+        "fallback_pct": round(100 * fallback / n, 2) if n else None,
+        "floor_rule_rows": int((result["extracted_entity_type"] == FLOOR_ENTITY_TYPE).sum()),
+        "failed_rows": int(failed.sum()),
+        "failed_case_numbers": (
+            result.loc[failed, ID_COLUMN].head(100).tolist() if ID_COLUMN in result else []
+        ),
+        "top_objects": {str(k): int(v) for k, v in obj[~failed].value_counts().head(top_n).items()},
+        "config": {
+            "model": config.model_name,
+            "labels": list(config.labels),
+            "threshold": config.threshold,
+            "text_field": config.text_field,
+            "batch_size": config.batch_size,
+        },
+    }
+
+
 def parse_args(argv=None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="NEISS object extraction pipeline v1")
     p.add_argument("--input", type=Path, default=DEFAULT_INPUT)
@@ -263,6 +305,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--text-field", choices=["event", "normalized"], default="event")
     p.add_argument("--lowercase", action="store_true")
     p.add_argument("--batch-size", type=int, default=32)
+    p.add_argument("--log", type=Path, default=None, help="write run statistics (runtime, fallback rate, failures) to this JSON file")
     return p.parse_args(argv)
 
 
@@ -283,13 +326,21 @@ def main(argv=None) -> None:
         print("Running on all rows. This is slow on a CPU; use --sample 1000 to test first.")
 
     model = load_model(config)
+    start = time.perf_counter()
     result = run(df, model, config, args.narrative_column, progress=True)
+    elapsed = time.perf_counter() - start
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(args.output, index=False)
     fallback = (result["extracted_object"] == config.fallback).sum()
     print(f"Wrote {len(result):,} rows to {args.output}")
     print(f"{config.fallback} (no object found): {fallback:,} ({fallback / len(result):.1%})")
+    print(f"Runtime: {elapsed:,.1f} s")
+    if args.log is not None:
+        stats = summarize_run(result, len(df), elapsed, config)
+        args.log.parent.mkdir(parents=True, exist_ok=True)
+        args.log.write_text(json.dumps(stats, indent=2), encoding="utf-8")
+        print(f"Wrote run log to {args.log} ({stats['failed_rows']:,} failed rows)")
 
 
 if __name__ == "__main__":

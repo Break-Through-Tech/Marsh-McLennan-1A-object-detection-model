@@ -191,3 +191,32 @@ def test_a_model_span_beats_the_floor_default():
 def test_floor_default_can_be_switched_off():
     row = run_one("70YOF FELL AT HOME. DX: FX", fallback_rule=None)
     assert row["extracted_object"] == "OTHER"
+
+
+def test_summarize_run_counts_fallback_and_failures():
+    result = pd.DataFrame(
+        {
+            "case_number": [1, 2, 3, 4],
+            "extracted_object": ["LADDER", "OTHER", None, "LADDER"],
+            "extracted_entity_type": ["object", None, None, "object"],
+        }
+    )
+    stats = extract.summarize_run(result, 4, 2.0, ExtractionConfig())
+    assert stats["input_rows"] == 4 and stats["output_rows"] == 4
+    assert stats["runtime_seconds"] == 2.0 and stats["rows_per_second"] == 2.0
+    assert stats["fallback_rows"] == 1 and stats["fallback_pct"] == 25.0
+    assert stats["failed_rows"] == 1 and stats["failed_case_numbers"] == [3]
+    assert stats["top_objects"] == {"LADDER": 2, "OTHER": 1}
+
+
+def test_main_writes_run_log(tmp_path, monkeypatch):
+    import json
+
+    inp = tmp_path / "in.csv"
+    sample_df().to_csv(inp, index=False)
+    monkeypatch.setattr(extract, "load_model", lambda config: FakeModel())
+    out, log = tmp_path / "out.csv", tmp_path / "log.json"
+    extract.main(["--input", str(inp), "--output", str(out), "--log", str(log)])
+    stats = json.loads(log.read_text(encoding="utf-8"))
+    assert stats["input_rows"] == stats["output_rows"] == len(pd.read_csv(out)) == 4
+    assert stats["failed_rows"] == 0
