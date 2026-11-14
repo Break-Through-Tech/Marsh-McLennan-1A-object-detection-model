@@ -15,9 +15,10 @@ Two kinds of ground truth:
     NEISS codes   Product_1 (and Product_2/3) on a random sample of the test fold
                   in reports/split_by_psu.csv. Large and automatic, but a proxy:
                   the coder's code is not always the object named in the text.
-    hand labels   data/eval/ground_truth_test_1.csv, a 100-case subset labeled by
-                  the team with data/eval/Labeling_Instructions.md. Scored only
-                  once its gold_object column is filled in.
+    hand labels   optional. `--make-label-sheet` writes a blank 100-case sheet to
+                  data/eval/ground_truth_test_1.csv for labeling with
+                  data/eval/Labeling_Instructions.md. When that file has
+                  gold_object labels, span-level scores are added to the report.
 
 Spans become NEISS codes through a lexicon built from the training fold only
 (CodeMapper): each word or word pair maps to the product code it most often
@@ -711,8 +712,9 @@ def write_summary(path: Path, ctx: dict) -> None:
         "",
     ]
     if ctx["hand"] is None:
-        lines += [f"Not scored yet: `{HAND_LABEL_PATH}` has no gold_object labels. Fill it in with "
-                  "`data/eval/Labeling_Instructions.md` and rerun `python -m src.final_eval`.", ""]
+        lines += ["Not used: no hand labels were collected for the test set. To add them, run "
+                  "`python -m src.final_eval --make-label-sheet`, label "
+                  f"`{HAND_LABEL_PATH}` with `data/eval/Labeling_Instructions.md`, and rerun.", ""]
     else:
         lines += [md_table(ctx["hand"]), ""]
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -778,6 +780,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--summary", type=Path, default=SUMMARY_PATH)
     p.add_argument("--error-sample", type=Path, default=ERROR_SAMPLE_PATH)
     p.add_argument("--figure", type=Path, default=FIGURE_PATH)
+    p.add_argument("--make-label-sheet", action="store_true",
+                   help=f"write a blank {HAND_N}-case hand-labeling sheet if it does not exist")
     p.add_argument("--n", type=int, default=TEST_N)
     p.add_argument("--bootstrap", type=int, default=BOOTSTRAP_ROUNDS)
     p.add_argument("--rebuild-test-set", action="store_true",
@@ -802,7 +806,7 @@ def main(argv=None, model_loader: Callable = extract.load_model) -> dict:
     leaked = set(test["case_number"]) & set(dev["case_number"])
     if leaked:
         raise SystemExit(f"Development cases found in the test set: {sorted(leaked)}")
-    if not args.hand_labels.exists():
+    if args.make_label_sheet and not args.hand_labels.exists():
         hand_label_template(test).to_csv(args.hand_labels, index=False)
         print(f"Wrote a blank {HAND_N}-case labeling sheet to {args.hand_labels}")
 

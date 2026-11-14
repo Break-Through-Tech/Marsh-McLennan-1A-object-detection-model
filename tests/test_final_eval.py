@@ -132,7 +132,7 @@ def test_main_end_to_end_with_fake_model(tmp_path):
                    "--hand-labels", out("hand.csv"), "--cache-dir", out("cache"),
                    "--details", out("details.csv"), "--metrics", out("metrics.csv"),
                    "--summary", out("summary.md"), "--error-sample", out("errors.csv"), "--figure", out("fig.png"),
-                   "--n", "50", "--bootstrap", "20"],
+                   "--n", "50", "--bootstrap", "20", "--make-label-sheet"],
                   model_loader=lambda config: FakeGliner())
 
     m = ctx["metrics"].set_index("system")
