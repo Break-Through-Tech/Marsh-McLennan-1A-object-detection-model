@@ -116,7 +116,7 @@ NEISS narrative → text preprocessing → GLiNER (extract product/object)
 
 ## 📈 **Results & Key Findings**
 
-Model results will be added after the October validation.
+**Task #2 (v3 refinement):** On the 25 previously labeled validation cases, strict precision/recall/F1 were 0.85/0.68/0.76, up from the v2 scores of 0.71/0.48/0.57. Lenient F1 increased from 0.76 to 0.89. These are exploratory in-sample results, not a held-out estimate. See [Task #2 model refinement](reports/task2_model_refinement.md) for tuning choices, error analysis, rule diagnostics, and limitations.
 
 ---
 

@@ -220,3 +220,70 @@ def test_main_writes_run_log(tmp_path, monkeypatch):
     stats = json.loads(log.read_text(encoding="utf-8"))
     assert stats["input_rows"] == stats["output_rows"] == len(pd.read_csv(out)) == 4
     assert stats["failed_rows"] == 0
+
+
+# ---------------------------------------------------------------- Task #2 span cleaning
+
+def test_clean_span_drops_action_words_and_keeps_products():
+    from src.extract import default_clean_span as clean
+    assert clean("HANDLING KNIFE") == "KNIFE"
+    assert clean("BASKETBALL GAME") == "BASKETBALL"
+    assert clean("HIS BIKE") == "BIKE"
+    assert clean("VIDEO GAME") == "VIDEO GAME"          # a real product, protected
+    assert clean("RIDING MOWER") == "RIDING MOWER"      # a real product
+    assert clean("LADDER") == "LADDER"
+
+
+def test_clean_span_fixes_near_miss_spellings_only():
+    from src.extract import default_clean_span as clean
+    assert clean("WHELLCHAIR") == "WHEELCHAIR"
+    assert clean("STAIRWAY") == "STAIRWAY"              # not close to any vocabulary word
+    assert clean("wheelchair") == "wheelchair"
+
+
+def test_cleaned_span_reaches_the_stoplist():
+    row = run_one("21YOF HIT HER HEAD ON THE SHELF DX: CHI", [ent("HER HEAD")])
+    assert row["extracted_object"] != "HER HEAD"        # cleaned to HEAD, then dropped as a body part
+
+
+def test_clean_span_can_be_switched_off():
+    row = run_one("37YOM HANDLING KNIFE, CUT LEG DX: LAC", [ent("HANDLING KNIFE")], clean_span=None)
+    assert row["extracted_object"] == "HANDLING KNIFE"
+
+
+# ---------------------------------------------------------------- Task #2 keyword rule
+
+def test_keyword_rule_names_a_missed_household_object():
+    row = run_one("74 YOF. HEAD INJURY AFTER PATIENT FELL OUT OF BED AT THE NURSING HOME. DX: SDH")
+    assert row["extracted_object"] == "BED"
+    assert row["extracted_entity_type"] == extract.KEYWORD_ENTITY_TYPE
+    assert run_one("3YOM FALL DOWN 5 STEPS DX CHEST WALL PAIN")["extracted_object"] == "STAIRS"
+    assert run_one("9YOF HAD A SLIP AND FALL IN THE SHOWER STRUCK HEAD DX: CHI")["extracted_object"] == "SHOWER"
+
+
+def test_keyword_rule_beats_the_floor_default_and_earliest_word_wins():
+    text = "69YOM FELL OUT OF BED AT CARE FACILITY FOUND ON THE FLOOR, LEFT ELBOW SKIN TEAR"
+    assert run_one(text)["extracted_object"] == "BED"
+    assert run_one("54YOM FELL DOWN STEPS ONTO A TILE FLOOR DX: FX")["extracted_object"] == "STAIRS"
+
+
+def test_keyword_rule_skips_dirt_bikes_and_whole_word_misses():
+    assert run_one("16YOM DIRT BIKE ACCIDENT DX: CONCUSSION")["extracted_object"] == "OTHER"
+    assert run_one("5YOM IN THE BATHROOM WITH A BEDROOM DOOR DX: LAC")["extracted_object"] == "OTHER"
+
+
+def test_a_model_span_beats_the_keyword_rule():
+    row = run_one("70YOM FELL OUT OF BED ONTO HIS CANE DX: FX", [ent("CANE")])
+    assert row["extracted_object"] == "CANE"
+
+
+def test_side_words_are_stripped_so_body_parts_reach_the_stoplist():
+    from src.extract import default_clean_span as clean
+    assert clean("RIGHT KNEE") == "KNEE"
+    assert clean("LOWER BACK") == "BACK"
+    text = "20YOM FELL RUNNING ON CONCRETE FLOOR DX: ABRASION"
+    assert run_one(text, [ent("RIGHT KNEE")])["extracted_object"] == "FLOOR"
+
+
+def test_keyword_and_floor_rules_switch_off_together():
+    assert run_one("74 YOF FELL OUT OF BED DX: SDH", fallback_rule=None)["extracted_object"] == "OTHER"
