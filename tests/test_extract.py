@@ -232,6 +232,8 @@ def test_clean_span_drops_action_words_and_keeps_products():
     assert clean("VIDEO GAME") == "VIDEO GAME"          # a real product, protected
     assert clean("RIDING MOWER") == "RIDING MOWER"      # a real product
     assert clean("LADDER") == "LADDER"
+    assert clean("THE VIDEO GAME") == "VIDEO GAME"
+    assert clean("BOARD GAME ACCIDENT") == "BOARD GAME"
 
 
 def test_clean_span_fixes_near_miss_spellings_only():

@@ -13,7 +13,7 @@ Run from the repo root:
 
 Writes:
     reports/task2_tuning_grid.csv     one row per configuration tried
-    reports/task2_eval_details.csv    per-case results for the best configuration
+    reports/task2_tuning_best_details.csv    per-case results for the best configuration
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ except ImportError:  # python src/tune.py
     import extract
 
 DEFAULT_GRID_OUT = Path("reports/task2_tuning_grid.csv")
-DEFAULT_DETAILS_OUT = Path("reports/task2_eval_details.csv")
+DEFAULT_DETAILS_OUT = Path("reports/task2_tuning_best_details.csv")
 
 BASE_LABELS = ("object", "tool", "furniture", "sports equipment", "structure")  # the Task #9 labels
 LABEL_SETS = {

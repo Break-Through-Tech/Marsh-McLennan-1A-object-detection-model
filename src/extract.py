@@ -128,12 +128,13 @@ def default_clean_span(text: str) -> str:
     words = text.strip().split()
     if not words:
         return text
-    if " ".join(words).lower() not in PROTECTED_SPANS:
-        while len(words) > 1 and words[0].lower() in LEADING_WORDS:
-            words = words[1:]
-        while len(words) > 1 and words[-1].lower() in TRAILING_WORDS:
-            words = words[:-1]
-    return " ".join(fix_typo(w) for w in words)
+    while len(words) > 1 and words[0].lower() in LEADING_WORDS:
+        words = words[1:]
+
+    while len(words) > 1 and words[-1].lower() in TRAILING_WORDS:
+        if " ".join(words).lower() in PROTECTED_SPANS:
+            break
+        words = words[:-1]
 
 
 class Extraction(NamedTuple):
