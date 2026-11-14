@@ -13,15 +13,16 @@ What to swap, and where:
     prompt    ExtractionConfig.labels (the entity labels GLiNER is asked for),
               .threshold, .model_name
     input     ExtractionConfig.text_field ("event" or "normalized"), .lowercase
-    rules     ExtractionConfig.keep_entity (drop unwanted spans),
+    rules     ExtractionConfig.clean_span (tidy a span), .keep_entity (drop unwanted spans),
               .choose_entity (pick one span out of several) and
-              .fallback_rule (what to output when no span survives)
+              .fallback_rule (what to output when no span survives: keyword, then floor)
 Cleaning rules live in src/preprocess.py and are shared with the EDA notebook.
 """
 
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import re
 import time
@@ -37,12 +38,12 @@ except ImportError:  # python src/extract.py
     from preprocess import preprocess, split_diagnosis
 
 DEFAULT_INPUT = Path("data/processed/neiss2025_clean.csv")
-DEFAULT_OUTPUT = Path("data/processed/extractions_v1.csv")
+DEFAULT_OUTPUT = Path("data/processed/extractions_v3.csv")
 
 # Same model, labels and threshold as reports/model_logic_plan.md and the
 # Task #5 sample notebook, so results are comparable.
 DEFAULT_MODEL = "urchade/gliner_medium-v2.1"
-DEFAULT_LABELS = ("object", "tool", "furniture", "sports equipment", "structure")
+DEFAULT_LABELS = ("object", "tool", "furniture", "sports equipment", "structure", "sport")
 DEFAULT_THRESHOLD = 0.30
 FALLBACK = "OTHER"
 
@@ -93,6 +94,49 @@ _NOT_A_FLOOR_FALL = re.compile(
 )
 
 
+# Rule 4 (Task #2): tidy every span before the stoplist and the scorer see it.
+# Leading and trailing words that describe the action, not the product, are
+# dropped ("HANDLING KNIFE" -> "KNIFE", "BASKETBALL GAME" -> "BASKETBALL"), and
+# near-miss spellings of common objects are fixed ("WHELLCHAIR" -> "WHEELCHAIR").
+LEADING_WORDS = {"a", "an", "the", "his", "her", "their", "my", "some",
+                 "using", "handling", "holding", "carrying",
+                 "right", "left", "rt", "lt", "upper", "lower"}
+TRAILING_WORDS = {"game", "games", "practice", "match", "class", "accident", "injury"}
+PROTECTED_SPANS = {"video game", "board game", "card game", "game"}  # real products
+TYPO_VOCAB = (
+    "wheelchair", "trampoline", "skateboard", "bicycle", "scooter", "basketball",
+    "football", "baseball", "softball", "treadmill", "recliner", "dresser",
+    "refrigerator", "stroller", "nightstand", "bookshelf", "bathtub", "mattress",
+    "staircase", "furniture", "hoverboard", "lawnmower", "bookcase", "microwave",
+)
+TYPO_CUTOFF = 0.88
+
+
+def fix_typo(word: str) -> str:
+    """Return the closest common object word when the spelling is a near miss."""
+    low = word.lower()
+    if len(low) < 7 or low in TYPO_VOCAB:
+        return word
+    match = difflib.get_close_matches(low, TYPO_VOCAB, n=1, cutoff=TYPO_CUTOFF)
+    if not match:
+        return word
+    return match[0].upper() if word.isupper() else match[0]
+
+
+def default_clean_span(text: str) -> str:
+    """Rule 4: drop action words around the product and fix near-miss spellings."""
+    words = text.strip().split()
+    if not words:
+        return text
+    while len(words) > 1 and words[0].lower() in LEADING_WORDS:
+        words = words[1:]
+
+    while len(words) > 1 and words[-1].lower() in TRAILING_WORDS:
+        if " ".join(words).lower() in PROTECTED_SPANS:
+            break
+        words = words[:-1]
+
+
 class Extraction(NamedTuple):
     text: Optional[str]
     entity_type: Optional[str]
@@ -125,6 +169,40 @@ def floor_for_falls(text: str) -> Optional["Extraction"]:
     return None
 
 
+# Rule 5 (Task #2): when the model finds nothing, look for a common household
+# object by name. These came from the Task #9 check: of 23 falls where the floor
+# rule disagreed with NEISS, 17 named a bed (5), steps (4), a shower or tub (5),
+# a scooter, a bike or a dresser that the model missed. The earliest match in
+# the text wins.
+KEYWORD_ENTITY_TYPE = "rule: keyword"
+KEYWORD_OBJECTS = (
+    ("BED", re.compile(r"\bBED\b", re.IGNORECASE)),
+    ("STAIRS", re.compile(r"\b(STAIRS|STAIRWAY|STAIRCASE|STEPS?)\b", re.IGNORECASE)),
+    ("SHOWER", re.compile(r"\bSHOWER\b", re.IGNORECASE)),
+    ("BATHTUB", re.compile(r"\b(BATHTUB|TUB|BATH)\b", re.IGNORECASE)),
+    ("SCOOTER", re.compile(r"\bSCOOTERS?\b", re.IGNORECASE)),
+    ("BICYCLE", re.compile(r"\b(BICYCLE|(?<!DIRT )BIKE)\b", re.IGNORECASE)),
+    ("DRESSER", re.compile(r"\bDRESSER\b", re.IGNORECASE)),
+)
+
+
+def keyword_object(text: str) -> Optional["Extraction"]:
+    """Rule 5: name the earliest common household object found in the text."""
+    best = None
+    for name, pattern in KEYWORD_OBJECTS:
+        m = pattern.search(text)
+        if m and (best is None or m.start() < best[0]):
+            best = (m.start(), name)
+    if best is None:
+        return None
+    return Extraction(best[1], KEYWORD_ENTITY_TYPE, None)
+
+
+def keyword_then_floor(text: str) -> Optional["Extraction"]:
+    """Default fallback: a named household object first, then the floor default."""
+    return keyword_object(text) or floor_for_falls(text)
+
+
 @dataclass(frozen=True)
 class ExtractionConfig:
     model_name: str = DEFAULT_MODEL
@@ -135,10 +213,12 @@ class ExtractionConfig:
     batch_size: int = 32
     fallback: str = FALLBACK
     keep_entity: Callable[[dict], bool] = default_keep_entity
+    # Tidies each span's text before keep_entity sees it; None switches it off.
+    clean_span: Optional[Callable[[str], str]] = default_clean_span
     choose_entity: Callable[[Sequence[dict]], dict] = default_choose_entity
     # Called with the model text when no span survives; return an Extraction or None.
-    # Set to None to switch the floor default off.
-    fallback_rule: Optional[Callable[[str], Optional["Extraction"]]] = floor_for_falls
+    # Set to None to switch the keyword and floor rules off.
+    fallback_rule: Optional[Callable[[str], Optional["Extraction"]]] = keyword_then_floor
 
 
 def prepare_text(narratives: pd.Series, config: ExtractionConfig) -> pd.DataFrame:
@@ -199,6 +279,8 @@ def extract_objects(
     entity_lists = predict_entities(model, [texts[i] for i in todo], config, progress)
 
     for i, entities in zip(todo, entity_lists):
+        if config.clean_span is not None:
+            entities = [{**e, "text": config.clean_span(e["text"])} for e in entities]
         kept = [e for e in entities if config.keep_entity(e)]
         if kept:
             best = config.choose_entity(kept)
