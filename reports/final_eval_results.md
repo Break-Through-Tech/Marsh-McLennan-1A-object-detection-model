@@ -35,44 +35,53 @@ Macro averages cover 320 gold classes; the `support20` column covers the 29 clas
 | system | metric | estimate | low | high |
 |---|---|---|---|---|
 | v1 | micro_f1 | 0.591 | 0.573 | 0.608 |
-| v3 - v1 | micro_f1 | 0.148 | 0.134 | 0.163 |
 | v1 | macro_f1 | 0.434 | 0.408 | 0.460 |
-| v3 - v1 | macro_f1 | 0.037 | 0.022 | 0.052 |
 | v1 | exact_match_product_1 | 0.506 | 0.488 | 0.524 |
-| v3 - v1 | exact_match_product_1 | 0.206 | 0.190 | 0.222 |
 | v2 | micro_f1 | 0.623 | 0.605 | 0.640 |
-| v3 - v2 | micro_f1 | 0.117 | 0.103 | 0.130 |
 | v2 | macro_f1 | 0.435 | 0.410 | 0.461 |
-| v3 - v2 | macro_f1 | 0.035 | 0.020 | 0.050 |
 | v2 | exact_match_product_1 | 0.575 | 0.558 | 0.593 |
-| v3 - v2 | exact_match_product_1 | 0.137 | 0.123 | 0.151 |
 | v3 | micro_f1 | 0.739 | 0.724 | 0.755 |
 | v3 | macro_f1 | 0.471 | 0.445 | 0.497 |
 | v3 | exact_match_product_1 | 0.712 | 0.696 | 0.728 |
 | v4 | micro_f1 | 0.744 | 0.729 | 0.760 |
-| v3 - v4 | micro_f1 | -0.005 | -0.008 | -0.002 |
 | v4 | macro_f1 | 0.474 | 0.448 | 0.501 |
-| v3 - v4 | macro_f1 | -0.004 | -0.008 | 0.000 |
 | v4 | exact_match_product_1 | 0.722 | 0.706 | 0.737 |
-| v3 - v4 | exact_match_product_1 | -0.009 | -0.013 | -0.006 |
 | keyword | micro_f1 | 0.851 | 0.839 | 0.864 |
-| v3 - keyword | micro_f1 | -0.112 | -0.127 | -0.098 |
 | keyword | macro_f1 | 0.623 | 0.596 | 0.650 |
-| v3 - keyword | macro_f1 | -0.152 | -0.179 | -0.125 |
 | keyword | exact_match_product_1 | 0.851 | 0.839 | 0.864 |
-| v3 - keyword | exact_match_product_1 | -0.139 | -0.154 | -0.124 |
 | classifier | micro_f1 | 0.883 | 0.872 | 0.894 |
-| v3 - classifier | micro_f1 | -0.144 | -0.159 | -0.130 |
 | classifier | macro_f1 | 0.711 | 0.685 | 0.737 |
-| v3 - classifier | macro_f1 | -0.240 | -0.268 | -0.213 |
 | classifier | exact_match_product_1 | 0.883 | 0.872 | 0.894 |
-| v3 - classifier | exact_match_product_1 | -0.171 | -0.186 | -0.156 |
 | majority | micro_f1 | 0.117 | 0.105 | 0.128 |
-| v3 - majority | micro_f1 | 0.622 | 0.604 | 0.641 |
 | majority | macro_f1 | 0.001 | 0.001 | 0.001 |
-| v3 - majority | macro_f1 | 0.470 | 0.444 | 0.496 |
 | majority | exact_match_product_1 | 0.117 | 0.105 | 0.128 |
-| v3 - majority | exact_match_product_1 | 0.596 | 0.576 | 0.615 |
+| classifier - v1 | micro_f1 | 0.293 | 0.275 | 0.310 |
+| classifier - v1 | macro_f1 | 0.277 | 0.249 | 0.306 |
+| classifier - v1 | exact_match_product_1 | 0.377 | 0.358 | 0.396 |
+| classifier - v2 | micro_f1 | 0.261 | 0.244 | 0.278 |
+| classifier - v2 | macro_f1 | 0.276 | 0.247 | 0.304 |
+| classifier - v2 | exact_match_product_1 | 0.308 | 0.290 | 0.326 |
+| classifier - v3 | micro_f1 | 0.144 | 0.130 | 0.159 |
+| classifier - v3 | macro_f1 | 0.240 | 0.213 | 0.268 |
+| classifier - v3 | exact_match_product_1 | 0.171 | 0.156 | 0.186 |
+| classifier - v4 | micro_f1 | 0.139 | 0.124 | 0.153 |
+| classifier - v4 | macro_f1 | 0.237 | 0.209 | 0.264 |
+| classifier - v4 | exact_match_product_1 | 0.162 | 0.147 | 0.177 |
+| classifier - keyword | micro_f1 | 0.032 | 0.023 | 0.041 |
+| classifier - keyword | macro_f1 | 0.088 | 0.067 | 0.109 |
+| classifier - keyword | exact_match_product_1 | 0.032 | 0.023 | 0.041 |
+| classifier - majority | micro_f1 | 0.767 | 0.751 | 0.782 |
+| classifier - majority | macro_f1 | 0.710 | 0.684 | 0.736 |
+| classifier - majority | exact_match_product_1 | 0.767 | 0.751 | 0.782 |
+| v3 - v1 | micro_f1 | 0.148 | 0.134 | 0.163 |
+| v3 - v1 | macro_f1 | 0.037 | 0.022 | 0.052 |
+| v3 - v1 | exact_match_product_1 | 0.206 | 0.190 | 0.222 |
+| v3 - v2 | micro_f1 | 0.117 | 0.103 | 0.130 |
+| v3 - v2 | macro_f1 | 0.035 | 0.020 | 0.050 |
+| v3 - v2 | exact_match_product_1 | 0.137 | 0.123 | 0.151 |
+| v4 - v3 | micro_f1 | 0.005 | 0.002 | 0.008 |
+| v4 - v3 | macro_f1 | 0.004 | -0.000 | 0.008 |
+| v4 - v3 | exact_match_product_1 | 0.009 | 0.006 | 0.013 |
 
 ## Slices (micro, against Product_1)
 
@@ -90,14 +99,17 @@ Macro averages cover 320 gold classes; the `support20` column covers the 29 clas
 
 ## Win/loss against Product_1
 
-| comparison | both right | only v3 right | only other right | both wrong |
+| comparison | both right | only first right | only second right | both wrong |
 |---|---|---|---|---|
+| classifier vs v1 | 1457 | 1193 | 62 | 288 |
+| classifier vs v2 | 1652 | 998 | 74 | 276 |
+| classifier vs v3 | 2063 | 587 | 74 | 276 |
+| classifier vs v4 | 2092 | 558 | 73 | 277 |
+| classifier vs keyword | 2492 | 158 | 62 | 288 |
+| classifier vs majority | 310 | 2340 | 40 | 310 |
 | v3 vs v1 | 1469 | 668 | 50 | 813 |
 | v3 vs v2 | 1662 | 475 | 64 | 799 |
-| v3 vs v4 | 2136 | 1 | 29 | 834 |
-| v3 vs keyword | 2036 | 101 | 518 | 345 |
-| v3 vs classifier | 2063 | 74 | 587 | 276 |
-| v3 vs majority | 277 | 1860 | 73 | 790 |
+| v4 vs v3 | 2136 | 29 | 1 | 834 |
 
 ## Micro F1 by test-fold hospital (PSU)
 
@@ -114,6 +126,34 @@ Macro averages cover 320 gold classes; the `support20` column covers the 29 clas
 | 29 | 49 | 0.558 | 0.645 | 0.695 | 0.688 | 0.776 | 0.837 | 0.163 |
 | 72 | 22 | 0.619 | 0.619 | 0.682 | 0.682 | 0.773 | 0.864 | 0.091 |
 | 6 | 19 | 0.444 | 0.667 | 0.811 | 0.811 | 0.947 | 0.947 | 0.316 |
+
+## classifier error categories
+
+| category | cases | share_of_errors |
+|---|---|---|
+| correct | 2650 |  |
+| different product | 178 | 0.509 |
+| matches a secondary NEISS product | 172 | 0.491 |
+
+## classifier most common confusions (gold -> predicted)
+
+| gold | predicted | cases |
+|---|---|---|
+| FLOORS OR FLOORING MATERIALS | BEDS OR BEDFRAMES, OTHER OR NOT SPECIFIED | 12 |
+| ALL TERRAIN VEHICLES (FOUR WHEELS/OFF ROAD ONLY) | ALL TERRAIN VEHICLES (# OF WHEELS UNSPECIFIED/OFF ROAD) | 5 |
+| ELECTRIC POWER-ASSISTED PEDAL BICYCLES | BICYCLES AND ACCESSORIES, (EXCL.MOUNTAIN OR ALL-TERRAIN) | 4 |
+| SWIMMING POOLS, NOT SPECIFIED | SWIMMING (ACTIVITY, APPAREL OR EQUIPMENT) | 4 |
+| WATER SLIDES, PUBLIC (STATIONARY AMUSEMENT RIDES) | WATER SLIDES, NOT ELSEWHERE CLASSIFIED | 4 |
+| SPORTS AND RECREATIONAL ACTIVITY, N.E.C. | EXERCISE (ACTIVITY OR APPAREL, W/O EQUIP) | 3 |
+| FLOORS OR FLOORING MATERIALS | STAIRS OR STEPS | 3 |
+| CARBON MONOXIDE POISONING (WHEN SOURCE IS UNKNOWN | GAS FUMES OR GAS VAPORS OF UNKNOWN ORIGIN | 3 |
+| BEACH CHAIRS OR FOLDING CHAIRS | CHAIRS, OTHER OR NOT SPECIFIED | 3 |
+| BEDS OR BEDFRAMES, OTHER OR NOT SPECIFIED | FLOORS OR FLOORING MATERIALS | 3 |
+| FLOORS OR FLOORING MATERIALS | FOOTWEAR | 2 |
+| CARDBOARD PRODUCTS | CONTAINERS, NOT SPECIFIED | 2 |
+| BABY BOUNCER SEATS (EXCL. JUMPERS) | CHAIRS, OTHER OR NOT SPECIFIED | 2 |
+| RUGS OR CARPETS, NOT SPECIFIED | FLOORS OR FLOORING MATERIALS | 2 |
+| OTHER DRUGS OR MEDICATIONS | TABLET OR CAPSULE DRUGS | 2 |
 
 ## v3 error categories
 
@@ -139,58 +179,62 @@ Macro averages cover 320 gold classes; the `support20` column covers the 29 clas
 | FLOORS OR FLOORING MATERIALS | STAIRS OR STEPS | 7 |
 | NONGLASS BOTTLES OR JARS | BOTTLES OR JARS, NOT SPECIFIED | 7 |
 | TRAMPOLINES | FLOORS OR FLOORING MATERIALS | 6 |
-| SWINGS OR SWING SETS | FLOORS OR FLOORING MATERIALS | 5 |
 | SCOOTERS, POWERED | BICYCLES AND ACCESSORIES, (EXCL.MOUNTAIN OR ALL-TERRAIN) | 5 |
-| BALLS, OTHER OR NOT SPECIFIED | SOCCER (ACTIVITY, APPAREL OR EQUIPMENT) | 4 |
+| SWINGS OR SWING SETS | FLOORS OR FLOORING MATERIALS | 5 |
+| OTHER PLAYGROUND EQUIPMENT | POLES | 4 |
+| STAIRS OR STEPS | CEILINGS AND WALLS (INTERIOR PART OF COMPLETED STRUCTURE) | 4 |
 | PLAYGROUND EQUIPMENT, NOT SPECIFIED | FLOORS OR FLOORING MATERIALS | 4 |
-| BEDS OR BEDFRAMES, OTHER OR NOT SPECIFIED | TABLES (EXCL.  BABY CHANGING TABLES, BILLIARD OR POOL TABLES | 4 |
-| SOFAS, COUCHES, DAVENPORTS, DIVANS OR STUDIO COUCHES | TABLES (EXCL.  BABY CHANGING TABLES, BILLIARD OR POOL TABLES | 4 |
+| ALL TERRAIN VEHICLES (FOUR WHEELS/OFF ROAD ONLY) | ALL TERRAIN VEHICLES (# OF WHEELS UNSPECIFIED/OFF ROAD) | 4 |
 
-## v3 fallback rules on held-out data
+## v4 fallback rules on held-out data
 
 | rule | answer | fired | match_product_1 | match_any |
 |---|---|---|---|---|
-| rule: floor default | FLOOR | 285 | 206 | 218 |
+| rule: floor default | FLOOR | 279 | 206 | 218 |
 | rule: keyword | BED | 36 | 28 | 35 |
-| rule: keyword | BICYCLE | 29 | 27 | 27 |
+| rule: keyword | BICYCLE | 30 | 28 | 28 |
 | rule: keyword | STAIRS | 28 | 28 | 28 |
 | rule: keyword | SHOWER | 24 | 23 | 24 |
+| rule: keyword | EXERCISE | 23 | 13 | 13 |
+| rule: keyword | DANCING | 12 | 5 | 6 |
 | rule: keyword | SCOOTER | 11 | 3 | 3 |
+| rule: keyword | SWIMMING | 6 | 4 | 6 |
 | rule: keyword | BATHTUB | 2 | 2 | 2 |
+| rule: keyword | WEIGHT LIFTING | 1 | 1 | 1 |
 
-## v3 per-class F1, classes with at least 20 test cases
+## classifier per-class F1, classes with at least 20 test cases (v3 F1 for comparison)
 
-| code | product | support | predicted | TP | precision | recall | f1 |
-|---|---|---|---|---|---|---|---|
-| 1266 | VOLLEYBALL (ACTIVITY, APPAREL OR EQUIPMENT) | 21 | 21 | 21 | 1.000 | 1.000 | 1.000 |
-| 1871 | FENCES OR FENCE POSTS | 23 | 24 | 23 | 0.958 | 1.000 | 0.979 |
-| 1211 | FOOTBALL (ACTIVITY, APPAREL OR EQUIPMENT) | 113 | 117 | 112 | 0.957 | 0.991 | 0.974 |
-| 1205 | BASKETBALL, ACTIVITY AND RELATED EQUIPMENT | 88 | 85 | 82 | 0.965 | 0.932 | 0.948 |
-| 1267 | SOCCER (ACTIVITY, APPAREL OR EQUIPMENT) | 82 | 93 | 82 | 0.882 | 1.000 | 0.937 |
-| 604 | DESKS, CHESTS, BUREAUS OR BUFFETS | 21 | 24 | 21 | 0.875 | 1.000 | 0.933 |
-| 5041 | BASEBALL (ACTIVITY, APPAREL OR EQUIPMENT; EXCL SOFTBALL) | 27 | 31 | 27 | 0.871 | 1.000 | 0.931 |
-| 611 | BATHTUBS OR SHOWERS | 44 | 46 | 41 | 0.891 | 0.932 | 0.911 |
-| 679 | SOFAS, COUCHES, DAVENPORTS, DIVANS OR STUDIO COUCHES | 51 | 54 | 46 | 0.852 | 0.902 | 0.876 |
-| 1842 | STAIRS OR STEPS | 205 | 219 | 184 | 0.840 | 0.898 | 0.868 |
-| 4074 | CHAIRS, OTHER OR NOT SPECIFIED | 66 | 73 | 60 | 0.822 | 0.909 | 0.863 |
-| 1884 | CEILINGS AND WALLS (INTERIOR PART OF COMPLETED STRUCTURE) | 51 | 60 | 47 | 0.783 | 0.922 | 0.847 |
-| 1893 | DOORS, OTHER OR NOT SPECIFIED | 46 | 47 | 39 | 0.830 | 0.848 | 0.839 |
-| 4076 | BEDS OR BEDFRAMES, OTHER OR NOT SPECIFIED | 159 | 170 | 137 | 0.806 | 0.862 | 0.833 |
-| 464 | KNIVES, NOT ELSEWHERE CLASSIFIED | 40 | 54 | 39 | 0.722 | 0.975 | 0.830 |
-| 5040 | BICYCLES AND ACCESSORIES, (EXCL.MOUNTAIN OR ALL-TERRAIN) | 77 | 92 | 70 | 0.761 | 0.909 | 0.828 |
-| 4056 | CABINETS, RACKS, ROOM DIVIDERS AND SHELVES, NEC | 22 | 29 | 21 | 0.724 | 0.955 | 0.824 |
-| 4057 | TABLES (EXCL.  BABY CHANGING TABLES, BILLIARD OR POOL TABLES | 60 | 76 | 56 | 0.737 | 0.933 | 0.824 |
-| 3265 | WEIGHT LIFTING (ACTIVITY, APPAREL OR EQUIPMENT) | 23 | 17 | 16 | 0.941 | 0.696 | 0.800 |
-| 1616 | JEWELRY | 35 | 28 | 25 | 0.893 | 0.714 | 0.794 |
-| 649 | TOILETS | 26 | 20 | 18 | 0.900 | 0.692 | 0.783 |
-| 1233 | TRAMPOLINES | 40 | 24 | 24 | 1.000 | 0.600 | 0.750 |
-| 1807 | FLOORS OR FLOORING MATERIALS | 350 | 403 | 277 | 0.687 | 0.791 | 0.736 |
-| 1615 | FOOTWEAR | 21 | 21 | 14 | 0.667 | 0.667 | 0.667 |
-| 5022 | SCOOTERS, POWERED | 31 | 45 | 23 | 0.511 | 0.742 | 0.605 |
-| 1244 | MONKEY BARS OR OTHER PLAYGROUND CLIMBING APPARATUS | 30 | 14 | 12 | 0.857 | 0.400 | 0.545 |
-| 3299 | EXERCISE (ACTIVITY OR APPAREL, W/O EQUIP) | 33 | 28 | 8 | 0.286 | 0.242 | 0.262 |
-| 1200 | SPORTS AND RECREATIONAL ACTIVITY, N.E.C. | 24 | 0 | 0 | 0.000 | 0.000 | 0.000 |
-| 5024 | SCOOTERS, UNSPECIFIED | 21 | 0 | 0 | 0.000 | 0.000 | 0.000 |
+| code | product | support | predicted | TP | precision | recall | f1 | v3_f1 |
+|---|---|---|---|---|---|---|---|---|
+| 1266 | VOLLEYBALL (ACTIVITY, APPAREL OR EQUIPMENT) | 21 | 21 | 21 | 1.000 | 1.000 | 1.000 | 1.000 |
+| 1267 | SOCCER (ACTIVITY, APPAREL OR EQUIPMENT) | 82 | 82 | 82 | 1.000 | 1.000 | 1.000 | 0.937 |
+| 1233 | TRAMPOLINES | 40 | 41 | 40 | 0.976 | 1.000 | 0.988 | 0.750 |
+| 1211 | FOOTBALL (ACTIVITY, APPAREL OR EQUIPMENT) | 113 | 114 | 112 | 0.982 | 0.991 | 0.987 | 0.974 |
+| 5022 | SCOOTERS, POWERED | 31 | 32 | 31 | 0.969 | 1.000 | 0.984 | 0.605 |
+| 3265 | WEIGHT LIFTING (ACTIVITY, APPAREL OR EQUIPMENT) | 23 | 22 | 22 | 1.000 | 0.957 | 0.978 | 0.800 |
+| 1616 | JEWELRY | 35 | 35 | 34 | 0.971 | 0.971 | 0.971 | 0.794 |
+| 1205 | BASKETBALL, ACTIVITY AND RELATED EQUIPMENT | 88 | 86 | 84 | 0.977 | 0.955 | 0.966 | 0.948 |
+| 611 | BATHTUBS OR SHOWERS | 44 | 41 | 41 | 1.000 | 0.932 | 0.965 | 0.911 |
+| 5041 | BASEBALL (ACTIVITY, APPAREL OR EQUIPMENT; EXCL SOFTBALL) | 27 | 29 | 27 | 0.931 | 1.000 | 0.964 | 0.931 |
+| 5040 | BICYCLES AND ACCESSORIES, (EXCL.MOUNTAIN OR ALL-TERRAIN) | 77 | 83 | 77 | 0.928 | 1.000 | 0.963 | 0.828 |
+| 1842 | STAIRS OR STEPS | 205 | 217 | 202 | 0.931 | 0.985 | 0.957 | 0.868 |
+| 5024 | SCOOTERS, UNSPECIFIED | 21 | 21 | 20 | 0.952 | 0.952 | 0.952 | 0.000 |
+| 1871 | FENCES OR FENCE POSTS | 23 | 24 | 22 | 0.917 | 0.957 | 0.936 | 0.979 |
+| 1244 | MONKEY BARS OR OTHER PLAYGROUND CLIMBING APPARATUS | 30 | 30 | 28 | 0.933 | 0.933 | 0.933 | 0.545 |
+| 604 | DESKS, CHESTS, BUREAUS OR BUFFETS | 21 | 20 | 19 | 0.950 | 0.905 | 0.927 | 0.933 |
+| 4057 | TABLES (EXCL.  BABY CHANGING TABLES, BILLIARD OR POOL TABLES | 60 | 57 | 54 | 0.947 | 0.900 | 0.923 | 0.824 |
+| 649 | TOILETS | 26 | 26 | 24 | 0.923 | 0.923 | 0.923 | 0.783 |
+| 1884 | CEILINGS AND WALLS (INTERIOR PART OF COMPLETED STRUCTURE) | 51 | 49 | 46 | 0.939 | 0.902 | 0.920 | 0.847 |
+| 679 | SOFAS, COUCHES, DAVENPORTS, DIVANS OR STUDIO COUCHES | 51 | 58 | 50 | 0.862 | 0.980 | 0.917 | 0.876 |
+| 4076 | BEDS OR BEDFRAMES, OTHER OR NOT SPECIFIED | 159 | 184 | 155 | 0.842 | 0.975 | 0.904 | 0.833 |
+| 464 | KNIVES, NOT ELSEWHERE CLASSIFIED | 40 | 45 | 38 | 0.844 | 0.950 | 0.894 | 0.830 |
+| 1893 | DOORS, OTHER OR NOT SPECIFIED | 46 | 48 | 42 | 0.875 | 0.913 | 0.894 | 0.839 |
+| 1807 | FLOORS OR FLOORING MATERIALS | 350 | 346 | 310 | 0.896 | 0.886 | 0.891 | 0.736 |
+| 4074 | CHAIRS, OTHER OR NOT SPECIFIED | 66 | 74 | 61 | 0.824 | 0.924 | 0.871 | 0.863 |
+| 4056 | CABINETS, RACKS, ROOM DIVIDERS AND SHELVES, NEC | 22 | 22 | 19 | 0.864 | 0.864 | 0.864 | 0.824 |
+| 3299 | EXERCISE (ACTIVITY OR APPAREL, W/O EQUIP) | 33 | 37 | 30 | 0.811 | 0.909 | 0.857 | 0.262 |
+| 1200 | SPORTS AND RECREATIONAL ACTIVITY, N.E.C. | 24 | 21 | 19 | 0.905 | 0.792 | 0.844 | 0.000 |
+| 1615 | FOOTWEAR | 21 | 25 | 16 | 0.640 | 0.762 | 0.696 | 0.667 |
 
 ## Hand-labeled test subset
 

@@ -80,12 +80,22 @@ def test_gold_code_set_drops_zero_slots():
 def test_error_category_order():
     base = {"v3_correct": False, "v3_code": 464, "v3_set_match": False,
             "v3_entity_type": "object", "vague_label": False}
-    assert fe.error_category({**base, "v3_correct": True}) == "correct"
-    assert fe.error_category({**base, "v3_code": fe.ABSTAIN}) == "abstained (OTHER)"
-    assert fe.error_category({**base, "v3_code": fe.UNMAPPED}) == "span has no lexicon code"
-    assert fe.error_category({**base, "v3_set_match": True}) == "matches a secondary NEISS product"
-    assert fe.error_category({**base, "v3_entity_type": "rule: floor default"}) == "floor/keyword rule wrong"
-    assert fe.error_category(base) == "model span, different product"
+    cat = lambda row: fe.error_category(row, name="v3")  # noqa: E731
+    assert cat({**base, "v3_correct": True}) == "correct"
+    assert cat({**base, "v3_code": fe.ABSTAIN}) == "abstained (OTHER)"
+    assert cat({**base, "v3_code": fe.UNMAPPED}) == "span has no lexicon code"
+    assert cat({**base, "v3_set_match": True}) == "matches a secondary NEISS product"
+    assert cat({**base, "v3_entity_type": "rule: floor default"}) == "floor/keyword rule wrong"
+    assert cat(base) == "model span, different product"
+    clf = {"classifier_correct": False, "classifier_code": 464, "classifier_set_match": False,
+           "classifier_entity_type": "classifier"}
+    assert fe.error_category(clf) == "different product"  # FINAL is the classifier
+
+
+def test_comparisons_put_final_first_then_history():
+    pairs = fe.comparisons(["v1", "v2", "v3", "v4", "classifier"])
+    assert pairs[:4] == [("classifier", "v1"), ("classifier", "v2"), ("classifier", "v3"), ("classifier", "v4")]
+    assert pairs[4:] == [("v3", "v1"), ("v3", "v2"), ("v4", "v3")]
 
 
 def test_label_in_text_heuristic():
@@ -131,7 +141,7 @@ def test_main_end_to_end_with_fake_model(tmp_path):
                    "--dev-gold", out("dev.csv"), "--test-set", out("test.csv"),
                    "--hand-labels", out("hand.csv"), "--cache-dir", out("cache"),
                    "--details", out("details.csv"), "--metrics", out("metrics.csv"),
-                   "--summary", out("summary.md"), "--error-sample", out("errors.csv"), "--figure", out("fig.png"),
+                   "--summary", out("summary.md"), "--error-sample-dir", out("errors"), "--figure", out("fig.png"),
                    "--n", "50", "--bootstrap", "20", "--make-label-sheet"],
                   model_loader=lambda config: FakeGliner())
 
@@ -139,6 +149,9 @@ def test_main_end_to_end_with_fake_model(tmp_path):
     assert m.loc["v3", "micro_f1"] == pytest.approx(1.0)  # fake model names every object
     assert m.loc["v3", "macro_f1"] > m.loc["majority", "macro_f1"]
     assert (tmp_path / "hand.csv").exists() and (tmp_path / "summary.md").exists()
+    assert {p.name for p in (tmp_path / "errors").iterdir()} >= {"final_eval_error_sample_v3.csv"}
+    summary = (tmp_path / "summary.md").read_text()
+    assert "## v3 error categories" in summary and "| v3 - v1 | micro_f1 |" in summary
     test = pd.read_csv(tmp_path / "test.csv", dtype={"case_number": str})
     assert set(test["psu"]) == {2} and "1000" not in set(test["case_number"])
     # A second run reads the cached entities and never loads the model.
@@ -146,6 +159,6 @@ def test_main_end_to_end_with_fake_model(tmp_path):
              "--dev-gold", out("dev.csv"), "--test-set", out("test.csv"),
              "--hand-labels", out("hand.csv"), "--cache-dir", out("cache"),
              "--details", out("details.csv"), "--metrics", out("metrics.csv"),
-             "--summary", out("summary.md"), "--error-sample", out("errors.csv"), "--figure", out("fig.png"),
+             "--summary", out("summary.md"), "--error-sample-dir", out("errors"), "--figure", out("fig.png"),
              "--n", "50", "--bootstrap", "20"],
             model_loader=lambda config: pytest.fail("model should not load on a cached rerun"))
