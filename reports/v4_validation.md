@@ -1,4 +1,23 @@
-# v4: speed and accuracy changes, validation results
+# v4: speed and accuracy changes, validation and test results
+
+## Held-out test (3,000 narratives, 11 test-fold hospitals, `python -m src.final_eval`)
+
+Run once, after the team chose the classifier on validation results. v3 reproduces its committed numbers exactly.
+
+| System | Micro P | Micro R | Micro F1 | Macro F1 | Exact match | Set match |
+|---|---:|---:|---:|---:|---:|---:|
+| v3 (Task #2) | 0.768 | 0.712 | 0.739 | 0.471 | 0.712 | 0.776 |
+| v4 GLiNER + rules | 0.769 | 0.722 | 0.744 | 0.474 | 0.722 | 0.786 |
+| Keyword lookup | 0.851 | 0.851 | 0.851 | 0.623 | 0.851 | 0.907 |
+| **v4 classifier** | **0.883** | **0.883** | **0.883** | **0.711** | **0.883** | **0.941** |
+
+Classifier minus v3, paired bootstrap 95% intervals: micro F1 +0.144 (0.130 to 0.159), macro F1 +0.240 (0.213 to 0.268), exact match +0.171 (0.156 to 0.186).
+
+On the 210 workplace-like products (tools, ladders, doors, glass, machinery), micro F1 was 0.698 for v3, 0.702 for v4 GLiNER and 0.848 for the classifier.
+
+Full tables: `reports/final_eval_results.md`.
+
+## Validation
 
 All accuracy numbers come from 5,000 narratives in the 10 validation-fold hospitals (`reports/split_by_psu.csv`), scored against the NEISS product code with the same lexicon and metrics as `src/final_eval.py`. The 3,000-case test set was not used. Reproduce with `python -m src.validate_v4`.
 
@@ -46,4 +65,4 @@ Set match = the predicted code is any of the case's NEISS product codes (Product
 
 - **NEISS codes are a proxy for the object named in the text.** See `reports/final_evaluation.md`.
 - **The classifier learned NEISS wording.** How it transfers to Marsh's workers' compensation text is unknown. It needs sample narratives from Marsh, and the `agree` column flags cases to check.
-- **The test set has not been rerun with v4.** Run `python -m src.final_eval` once after the team settles on v4. Then add `v4` and `classifier` to `SYSTEMS` in `tests/test_task3_reproducibility.py`.
+- **Ground truth is the NEISS code on both validation and test.** No hand labels were collected for the test set.
