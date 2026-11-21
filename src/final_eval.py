@@ -1,11 +1,15 @@
 """Final held-out evaluation of the object-extraction model (Milestone 3).
 
-Scores the final model (v3, the current src/extract.py defaults) against three
-baselines on narratives from hospitals that no earlier task looked at:
+Scores the final model (v4) against earlier versions and baselines on narratives
+from hospitals that no earlier task looked at:
 
     v1        Task #4/#7 pipeline: base labels, people/body-part stoplist only
     v2        Task #9 pipeline: + wider stoplist, + floor default for falls
-    v3        Task #2 pipeline (final): + "sport" label, span cleanup, keyword fallback
+    v3        Task #2 pipeline: + "sport" label, span cleanup, keyword fallback
+    v4        the current src/extract.py defaults: v3 + activity keywords, span rules
+    classifier  v4 code step (final): src/classify.py, TF-IDF + linear model trained
+              on the training fold. v4 names the object with GLiNER (the `v4`
+              system) and assigns the product code with this classifier.
     keyword   model-free baseline: the narrative word most strongly tied to one
               product code in the training fold
     majority  always predicts the most common training-fold product (floors)
@@ -73,7 +77,8 @@ CACHE_DIR = Path("data/processed/final_eval_cache")
 DETAILS_PATH = Path("reports/final_eval_details.csv")
 METRICS_PATH = Path("reports/final_eval_metrics.csv")
 SUMMARY_PATH = Path("reports/final_eval_results.md")
-ERROR_SAMPLE_PATH = Path("reports/final_eval_error_sample.csv")
+# One error sample per system in ERROR_SYSTEMS, for hand review; never overwritten.
+ERROR_SAMPLE_DIR = Path("reports")
 FIGURE_PATH = Path("reports/figures/final_eval_comparison.png")
 
 TEST_N = 3000
@@ -89,7 +94,12 @@ ABSTAIN = -1  # predicted code when the system returns OTHER
 UNMAPPED = -2  # predicted code when the span has no lexicon entry
 
 SYSTEMS = ("v1", "v2", "v3", "v4", "classifier", "keyword", "majority")
-FINAL = "v3"
+FINAL = "classifier"  # v4's product-code step
+OBJECT_MODEL = "v4"  # v4's object step (GLiNER + rules)
+ERROR_SYSTEMS = (FINAL, "v3")  # error tables and review samples; v3 was the final model before v4
+# Paired comparisons for the bootstrap and win/loss tables: the final system against
+# every other one, plus the earlier version-to-version steps.
+HISTORY_PAIRS = (("v3", "v1"), ("v3", "v2"), ("v4", "v3"))
 
 # ---------------------------------------------------------------- pipelines
 
@@ -430,10 +440,17 @@ def system_metrics(scored: pd.DataFrame, name: str, frequent: np.ndarray) -> dic
     }
 
 
+def comparisons(systems, final: str = FINAL, history=HISTORY_PAIRS):
+    """(a, b) pairs to compare: final vs every other system, then the history pairs."""
+    pairs = [(final, s) for s in systems if s != final and final in systems]
+    return pairs + [(a, b) for a, b in history if a in systems and b in systems and (a, b) not in pairs]
+
+
 def bootstrap(scored: pd.DataFrame, systems, rounds: int = BOOTSTRAP_ROUNDS,
-              seed: int = TEST_SEED, final: str = FINAL) -> pd.DataFrame:
+              seed: int = TEST_SEED, pairs=None) -> pd.DataFrame:
     """95% intervals (estimate +/- 1.96 bootstrap SD) for micro F1, macro F1 and exact
-    match, and for the paired difference between the final system and each other one.
+    match, and for the paired difference a - b for each (a, b) in `pairs`
+    (default: comparisons(systems)).
 
     Normal intervals rather than percentiles: a resample loses rare classes, which
     mostly score F1 0, so resampled macro F1 drifts above the full-sample value and a
@@ -464,11 +481,12 @@ def bootstrap(scored: pd.DataFrame, systems, rounds: int = BOOTSTRAP_ROUNDS,
             est, sd = point[s][metric], float(np.std(values, ddof=1))
             rows.append({"system": s, "metric": metric, "estimate": est,
                          "low": est - 1.96 * sd, "high": est + 1.96 * sd})
-            if s != final and final in stats:
-                d = np.array(stats[final][metric]) - np.array(values)
-                est_d, sd_d = point[final][metric] - est, float(np.std(d, ddof=1))
-                rows.append({"system": f"{final} - {s}", "metric": metric, "estimate": est_d,
-                             "low": est_d - 1.96 * sd_d, "high": est_d + 1.96 * sd_d})
+    for a, b in (comparisons(systems) if pairs is None else pairs):
+        for metric in stats[a]:
+            d = np.array(stats[a][metric]) - np.array(stats[b][metric])
+            est_d, sd_d = point[a][metric] - point[b][metric], float(np.std(d, ddof=1))
+            rows.append({"system": f"{a} - {b}", "metric": metric, "estimate": est_d,
+                         "low": est_d - 1.96 * sd_d, "high": est_d + 1.96 * sd_d})
     return pd.DataFrame(rows)
 
 
@@ -541,9 +559,20 @@ def error_category(row, name: str = FINAL) -> str:
         return "span has no lexicon code"
     if row[f"{name}_set_match"]:
         return "matches a secondary NEISS product"
-    if str(row[f"{name}_entity_type"]).startswith("rule:"):
+    entity_type = str(row[f"{name}_entity_type"])
+    if entity_type.startswith("rule:"):
         return "floor/keyword rule wrong"
+    if entity_type == "classifier":
+        return "different product"
     return "model span, different product"
+
+
+def error_table(scored: pd.DataFrame, name: str) -> pd.DataFrame:
+    cats = scored[f"{name}_error_category"]
+    out = cats.value_counts().rename_axis("category").reset_index(name="cases")
+    out["share_of_errors"] = np.where(out["category"] == "correct", np.nan,
+                                      out["cases"] / (cats != "correct").sum())
+    return out
 
 
 def rule_table(scored: pd.DataFrame, name: str = FINAL) -> pd.DataFrame:
@@ -568,10 +597,10 @@ def confusions(scored: pd.DataFrame, names: Dict[int, str], name: str = FINAL, t
     return pairs[["gold", "predicted", "cases"]]
 
 
-def win_loss(scored: pd.DataFrame, final: str, other: str) -> dict:
-    a, b = scored[f"{final}_correct"], scored[f"{other}_correct"]
-    return {"comparison": f"{final} vs {other}", "both right": int((a & b).sum()),
-            f"only {final} right": int((a & ~b).sum()), "only other right": int((~a & b).sum()),
+def win_loss(scored: pd.DataFrame, first: str, second: str) -> dict:
+    a, b = scored[f"{first}_correct"], scored[f"{second}_correct"]
+    return {"comparison": f"{first} vs {second}", "both right": int((a & b).sum()),
+            "only first right": int((a & ~b).sum()), "only second right": int((~a & b).sum()),
             "both wrong": int((~a & ~b).sum())}
 
 
@@ -700,19 +729,25 @@ def write_summary(path: Path, ctx: dict) -> None:
         "",
         md_table(ctx["hospitals"]),
         "",
-        f"## {FINAL} error categories",
-        "",
-        md_table(ctx["errors"]),
-        "",
-        f"## {FINAL} most common confusions (gold -> predicted)",
-        "",
-        md_table(ctx["confusions"]),
-        "",
-        f"## {FINAL} fallback rules on held-out data",
+    ]
+    for name, errors in ctx["errors"].items():
+        lines += [
+            f"## {name} error categories",
+            "",
+            md_table(errors),
+            "",
+            f"## {name} most common confusions (gold -> predicted)",
+            "",
+            md_table(ctx["confusions"][name]),
+            "",
+        ]
+    lines += [
+        f"## {OBJECT_MODEL} fallback rules on held-out data",
         "",
         md_table(ctx["rules"]),
         "",
-        f"## {FINAL} per-class F1, classes with at least {MACRO_MIN_SUPPORT} test cases",
+        f"## {FINAL} per-class F1, classes with at least {MACRO_MIN_SUPPORT} test cases "
+        f"({ERROR_SYSTEMS[1]} F1 for comparison)",
         "",
         md_table(ctx["per_class"]),
         "",
@@ -729,7 +764,8 @@ def write_summary(path: Path, ctx: dict) -> None:
     path.write_text("\n".join(lines))
 
 
-SYSTEM_NAMES = {"v1": "v1 (Task #7)", "v2": "v2 (Task #9)", "v3": "v3 final (Task #2)",
+SYSTEM_NAMES = {"v1": "v1 (Task #7)", "v2": "v2 (Task #9)", "v3": "v3 (Task #2)",
+                "v4": "v4 GLiNER + rules", "classifier": "v4 classifier (final)",
                 "keyword": "Keyword lookup", "majority": "Majority class"}
 
 
@@ -740,8 +776,9 @@ def plot_comparison(metrics_df: pd.DataFrame, ci: pd.DataFrame, path: Path) -> N
     import matplotlib.pyplot as plt
 
     surface, ink, muted, grid, series = "#fcfcfb", "#0b0b0b", "#52514e", "#e4e3df", "#2a78d6"
-    order = [s for s in ("majority", "keyword", "v1", "v2", "v3") if s in set(metrics_df["system"])]
-    fig, axes = plt.subplots(1, 2, figsize=(10, 3.6), sharey=True, facecolor=surface)
+    order = [s for s in ("majority", "keyword", "v1", "v2", "v3", "v4", "classifier")
+             if s in set(metrics_df["system"])]
+    fig, axes = plt.subplots(1, 2, figsize=(10, 1.2 + 0.5 * len(order)), sharey=True, facecolor=surface)
     for ax, metric, title in zip(axes, ("micro_f1", "macro_f1"), ("Micro F1", "Macro F1")):
         ax.set_facecolor(surface)
         for y, s in enumerate(order):
@@ -786,7 +823,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--details", type=Path, default=DETAILS_PATH)
     p.add_argument("--metrics", type=Path, default=METRICS_PATH)
     p.add_argument("--summary", type=Path, default=SUMMARY_PATH)
-    p.add_argument("--error-sample", type=Path, default=ERROR_SAMPLE_PATH)
+    p.add_argument("--error-sample-dir", type=Path, default=ERROR_SAMPLE_DIR,
+                   help="folder for final_eval_error_sample_<system>.csv (existing files are kept)")
     p.add_argument("--figure", type=Path, default=FIGURE_PATH)
     p.add_argument("--make-label-sheet", action="store_true",
                    help=f"write a blank {HAND_N}-case hand-labeling sheet if it does not exist")
@@ -851,11 +889,13 @@ def main(argv=None, model_loader: Callable = extract.load_model) -> dict:
     frequent = np.array(frequent[frequent >= MACRO_MIN_SUPPORT].index)
     metrics_df = pd.DataFrame([system_metrics(scored, s, frequent) for s in systems])
 
-    scored["error_category"] = scored.apply(error_category, axis=1)
-    errors = (scored["error_category"].value_counts().rename_axis("category").reset_index(name="cases"))
-    errors["share_of_errors"] = np.where(errors["category"] == "correct", np.nan,
-                                         errors["cases"] / (scored["error_category"] != "correct").sum())
+    error_systems = [s for s in ERROR_SYSTEMS if s in systems]
+    for s in error_systems:
+        scored[f"{s}_error_category"] = scored.apply(error_category, axis=1, name=s)
     pc = per_class(gold.values, scored[f"{FINAL}_code"].values)
+    if len(ERROR_SYSTEMS) > 1 and ERROR_SYSTEMS[1] in systems:
+        other = ERROR_SYSTEMS[1]
+        pc[f"{other}_f1"] = per_class(gold.values, scored[f"{other}_code"].values)["f1"].values
     pc = pc[pc["support"] >= MACRO_MIN_SUPPORT].sort_values("f1", ascending=False)
     pc.insert(1, "product", pc["code"].map(lambda c: names.get(int(c), str(c))))
 
@@ -864,9 +904,11 @@ def main(argv=None, model_loader: Callable = extract.load_model) -> dict:
         "systems": systems, "metrics": metrics_df,
         "bootstrap": bootstrap(scored, systems, rounds=args.bootstrap),
         "slices": slice_table(scored, systems),
-        "win_loss": [win_loss(scored, FINAL, s) for s in systems if s != FINAL],
+        "win_loss": [win_loss(scored, a, b) for a, b in comparisons(systems)],
         "hospitals": hospital_table(scored, systems),
-        "errors": errors, "confusions": confusions(scored, names), "rules": rule_table(scored),
+        "errors": {s: error_table(scored, s) for s in error_systems},
+        "confusions": {s: confusions(scored, names, name=s) for s in error_systems},
+        "rules": rule_table(scored, name=OBJECT_MODEL),
         "per_class": pc, "dev": dev_check(dev, dev_preds, mapper),
         "hand": hand_label_metrics(hand, preds, mapper) if hand is not None else None,
         "n_test": len(test), "n_test_psu": test["psu"].nunique(), "n_train": len(train),
@@ -879,20 +921,28 @@ def main(argv=None, model_loader: Callable = extract.load_model) -> dict:
             lambda c: {ABSTAIN: "OTHER", UNMAPPED: "UNMAPPED"}.get(int(c), names.get(int(c), str(c))))
     detail_cols = (["case_number", "psu", "narrative", "product_code", "product_label", "product_2_code",
                     "product_3_code", "vague_label", "redacted", "label_in_text", "workplace_like",
-                    "multi_product", "error_category"]
+                    "multi_product"]
+                   + [f"{s}_error_category" for s in error_systems]
                    + [f"{s}_{f}" for s in systems for f in ("span", "entity_type", "code", "label",
                                                             "correct", "set_match")])
     args.details.parent.mkdir(parents=True, exist_ok=True)
     scored[detail_cols].to_csv(args.details, index=False)
     metrics_df.to_csv(args.metrics, index=False)
-    if not args.error_sample.exists():
-        errs = scored[scored["error_category"] != "correct"]
+    for s in error_systems:
+        path = args.error_sample_dir / f"final_eval_error_sample_{s}.csv"
+        if path.exists():  # may hold a hand review
+            continue
+        errs = scored[scored[f"{s}_error_category"] != "correct"]
         sample = errs.sample(n=min(ERROR_SAMPLE_N, len(errs)), random_state=TEST_SEED)
+        # The classifier names no object, so show the v4 object next to its code.
+        spans = [f"{OBJECT_MODEL}_span", f"{OBJECT_MODEL}_label"] if s == FINAL else [f"{s}_span"]
         sample = sample[["case_number", "narrative", "product_label", "product_2_code", "product_3_code",
-                         f"{FINAL}_span", f"{FINAL}_label", "error_category"]].copy()
+                         *spans, f"{s}_label", f"{s}_error_category"]].copy()
+        sample = sample.rename(columns={f"{s}_error_category": "error_category"})
         sample["review_category"] = ""
         sample["review_note"] = ""
-        sample.to_csv(args.error_sample, index=False)
+        args.error_sample_dir.mkdir(parents=True, exist_ok=True)
+        sample.to_csv(path, index=False)
     write_summary(args.summary, ctx)
     if args.figure is not None:
         plot_comparison(metrics_df, ctx["bootstrap"], args.figure)
