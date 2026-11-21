@@ -135,6 +135,7 @@ def default_clean_span(text: str) -> str:
         if " ".join(words).lower() in PROTECTED_SPANS:
             break
         words = words[:-1]
+    return " ".join(fix_typo(w) for w in words)
 
 
 class Extraction(NamedTuple):

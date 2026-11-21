@@ -116,6 +116,8 @@ NEISS narrative → text preprocessing → GLiNER (extract product/object)
 
 ## 📈 **Results & Key Findings**
 
+**Final held-out evaluation:** On 3,000 narratives from the 11 test-fold hospitals, scored against the NEISS `Product_1` code, the final model (v3) reached micro precision/recall/F1 of 0.77/0.71/0.74, macro F1 of 0.47 (0.76 over the 29 classes with at least 20 cases), and exact-match accuracy of 0.71. Against the v1 baseline, micro F1 rose by 0.15 (95% interval 0.13 to 0.16) and exact match by 0.21. A keyword lookup trained on NEISS codes scored higher (micro F1 0.85), but it predicts codes rather than extracting the object. A review of 50 errors found that about half were sibling codes, mapping issues or defensible alternative answers rather than model mistakes. All scores use NEISS codes as ground truth; no new hand labels were collected for the test set. See the [final evaluation report](reports/final_evaluation.md) for the method, slices, error analysis, and limitations.
+
 **Task #2 (v3 refinement):** On the 25 previously labeled validation cases, strict precision/recall/F1 were 0.85/0.68/0.76, up from the v2 scores of 0.71/0.48/0.57. Lenient F1 increased from 0.76 to 0.89. These are exploratory in-sample results, not a held-out estimate. See [Task #2 model refinement](reports/task2_model_refinement.md) for tuning choices, error analysis, rule diagnostics, and limitations.
 
 ---
