@@ -289,3 +289,65 @@ def test_side_words_are_stripped_so_body_parts_reach_the_stoplist():
 
 def test_keyword_and_floor_rules_switch_off_together():
     assert run_one("74 YOF FELL OUT OF BED DX: SDH", fallback_rule=None)["extracted_object"] == "OTHER"
+
+
+# ---------------------------------------------------------------- v4 speed: batching, shards, resume
+
+class InferenceModel:
+    """Records inference() calls; finds LADDER and BED."""
+
+    def __init__(self):
+        self.calls = []
+
+    def inference(self, texts, labels, threshold=0.5, batch_size=8):
+        self.calls.append((list(texts), batch_size))
+        out = []
+        for t in texts:
+            found = [w for w in ("LADDER", "BED") if w in t]
+            out.append([{"text": w, "label": "object", "score": 0.9, "start": 0, "end": 0} for w in found])
+        return out
+
+
+def test_predict_entities_dedupes_sorts_and_keeps_input_order():
+    model = InferenceModel()
+    texts = ["FELL OFF A LONG LADDER", "BED", "FELL OFF A LONG LADDER", "NOTHING HERE"]
+    out = extract.predict_entities(model, texts, ExtractionConfig(batch_size=24))
+    assert [[e["text"] for e in ents] for ents in out] == [["LADDER"], ["BED"], ["LADDER"], []]
+    sent = [t for call, _ in model.calls for t in call]
+    assert len(sent) == 3                                   # the duplicate ran once
+    assert sent == sorted(sent, key=len)                    # shortest first
+    assert all(bs == 24 for _, bs in model.calls)           # the real batch size reaches GLiNER
+
+
+def test_select_shard_splits_rows_without_overlap():
+    df = pd.DataFrame({"case_number": range(10)})
+    parts = [extract.select_shard(df, f"{k}/3") for k in (1, 2, 3)]
+    ids = [i for p in parts for i in p["case_number"]]
+    assert sorted(ids) == list(range(10)) and len(ids) == 10
+
+
+def test_chunked_run_resumes_and_merge_combines(tmp_path, monkeypatch):
+    clean = tmp_path / "clean.csv"
+    pd.DataFrame({
+        "case_number": [1, 2, 3, 4, 5],
+        "narrative": ["FELL OFF LADDER DX: FX", "FELL OUT OF BED DX: FX", "CUT FINGER DX: LAC",
+                      "LADDER TIPPED DX: FX", "BED FRAME DX: CONT"],
+    }).to_csv(clean, index=False)
+    model = InferenceModel()
+    monkeypatch.setattr(extract, "load_model", lambda config: model)
+
+    out = tmp_path / "out.csv"
+    for shard in ("1/2", "2/2"):
+        extract.main(["--input", str(clean), "--output", str(out), "--shard", shard, "--chunk-size", "2"])
+    shard1 = tmp_path / "out.shard1of2.csv"
+    assert len(list((tmp_path / "out.shard1of2_parts").glob("part_*.csv"))) == 2
+
+    calls_before = len(model.calls)
+    extract.main(["--input", str(clean), "--output", str(out), "--shard", "1/2", "--chunk-size", "2"])
+    assert len(model.calls) == calls_before                # every chunk was reused, model not called
+
+    final = tmp_path / "final.csv"
+    extract.main(["--merge", str(shard1), str(tmp_path / "out.shard2of2.csv"), "--output", str(final)])
+    merged = pd.read_csv(final)
+    assert sorted(merged["case_number"]) == [1, 2, 3, 4, 5]
+    assert merged.set_index("case_number").loc[1, "extracted_object"] == "LADDER"

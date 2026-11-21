@@ -88,7 +88,7 @@ ERROR_SAMPLE_N = 50
 ABSTAIN = -1  # predicted code when the system returns OTHER
 UNMAPPED = -2  # predicted code when the span has no lexicon entry
 
-SYSTEMS = ("v1", "v2", "v3", "keyword", "majority")
+SYSTEMS = ("v1", "v2", "v3", "v4", "classifier", "keyword", "majority")
 FINAL = "v3"
 
 # ---------------------------------------------------------------- pipelines
@@ -107,16 +107,19 @@ def v1_keep_entity(entity: dict) -> bool:
 
 
 PIPELINES: Dict[str, extract.ExtractionConfig] = {
-    "v1": extract.ExtractionConfig(labels=tune.BASE_LABELS, keep_entity=v1_keep_entity,
+    "v1": extract.ExtractionConfig(labels=tune.BASE_LABELS, keep_entity=v1_keep_entity, keep_in_context=None,
                                    clean_span=None, fallback_rule=None),
     "v2": extract.ExtractionConfig(labels=tune.BASE_LABELS, clean_span=None,
+                                   keep_entity=extract.v3_keep_entity, keep_in_context=None,
                                    fallback_rule=extract.floor_for_falls),
-    "v3": extract.ExtractionConfig(),  # the final model: whatever src/extract.py defaults to
+    "v3": extract.ExtractionConfig(keep_entity=extract.v3_keep_entity, keep_in_context=None,
+                                   fallback_rule=extract.v3_keyword_then_floor),
+    "v4": extract.ExtractionConfig(),  # the current src/extract.py defaults
 }
 
 # Counts each version reported on the 25 development cases (strict TP, FP, FN),
 # used to check that this script reproduces the earlier runs.
-REPORTED_DEV_COUNTS = {"v1": (5, 12, 20), "v2": (12, 5, 13), "v3": (17, 3, 8)}
+REPORTED_DEV_COUNTS = {"v1": (5, 12, 20), "v2": (12, 5, 13), "v3": (17, 3, 8), "v4": (17, 3, 8)}
 
 # ---------------------------------------------------------------- data
 
@@ -298,7 +301,7 @@ def run_pipeline(df: pd.DataFrame, config: extract.ExtractionConfig, cache: dict
 
 
 def predict_all(df: pd.DataFrame, mapper: CodeMapper, majority_code: int, majority_span: str,
-                model: LazyModel, cache_dir: Path) -> Dict[str, pd.DataFrame]:
+                model: LazyModel, cache_dir: Path, classifier=None) -> Dict[str, pd.DataFrame]:
     """One frame per system: case_number, span, entity_type, code."""
     preds = {}
     for name, config in PIPELINES.items():
@@ -317,6 +320,11 @@ def predict_all(df: pd.DataFrame, mapper: CodeMapper, majority_code: int, majori
         "span": [s if s is not None else extract.FALLBACK for s, _ in kw],
         "entity_type": "baseline: keyword", "confidence": np.nan,
         "code": [c for _, c in kw]})
+    if classifier is not None:  # v4: src/classify.py, trained on the training fold
+        codes, margins = classifier.predict(events)
+        preds["classifier"] = pd.DataFrame({
+            "case_number": df["case_number"].values, "span": "", "entity_type": "classifier",
+            "confidence": margins, "code": codes})
     preds["majority"] = pd.DataFrame({
         "case_number": df["case_number"].values, "span": majority_span,
         "entity_type": "baseline: majority", "confidence": np.nan, "code": majority_code})
@@ -821,9 +829,17 @@ def main(argv=None, model_loader: Callable = extract.load_model) -> dict:
     majority_label = names.get(majority_code, str(majority_code))
     majority_span = evaluate._words(majority_label)[0].upper()
 
+    try:
+        from src import classify
+    except ImportError:
+        import classify
+    print("Training the v4 classifier on the training fold ...")
+    classifier = classify.ProductClassifier.fit(train["event_text"], train["product_code"])
+
     model = LazyModel(model_loader)
     both = pd.concat([test[["case_number", "narrative"]], dev[["case_number", "narrative"]]])
-    preds_all = predict_all(both, mapper, majority_code, majority_span, model, args.cache_dir)
+    preds_all = predict_all(both, mapper, majority_code, majority_span, model, args.cache_dir,
+                            classifier=classifier)
     test_ids, dev_ids = set(test["case_number"]), set(dev["case_number"])
     preds = {k: v[v["case_number"].isin(test_ids)] for k, v in preds_all.items()}
     dev_preds = {k: v[v["case_number"].isin(dev_ids)] for k, v in preds_all.items()}

@@ -22,7 +22,7 @@ Break Through Tech AI Studio, Fall 2026 · Host company: Marsh McLennan
 - Explored all 410,201 records of the 2025 NEISS dataset to decide which fields can be used to extract the object involved in an injury.
 - Chose `Narrative_1` (free-text injury description) as the only feature and `Product_1` (the product the NEISS coder recorded) as the label, because Marsh's test set is raw workers' compensation text with no NEISS codes.
 - Found that the product name appears in the narrative text for 66% of records (72% once vague labels are excluded), which shows how much of the label can be recovered from the text alone.
-- Planned a local extraction pipeline (GLiNER with spaCy cleanup) that needs no API costs.
+- Built a local pipeline with no API costs: GLiNER names the object in the text and a classifier trained on NEISS predicts the product code.
 
 ---
 
@@ -99,16 +99,27 @@ Better object extraction helps Marsh find which objects and products drive workp
 
 Full plan: [reports/model_logic_plan.md](reports/model_logic_plan.md)
 
-Planned pipeline (v1 is in progress):
+Current pipeline (v4):
 
 ```
-NEISS narrative → text preprocessing → GLiNER (extract product/object)
-→ spaCy / rule-based cleanup and normalization → predicted product → compare with Product_1
+NEISS narrative → preprocessing (src/preprocess.py) → GLiNER names the object (src/extract.py)
+               → span rules, keyword and floor fallbacks → object name
+NEISS narrative → TF-IDF + linear classifier (src/classify.py) → product code
 ```
 
-- **GLiNER** does zero-shot extraction of the object, so the model needs no labeled training set.
-- **spaCy** handles preprocessing, normalization of clinical shorthand, and rule-based cleanup.
-- Everything runs locally with no API costs.
+- **GLiNER** extracts the object named in the text, zero-shot.
+- **Rules** drop spans that are never the product (people, body parts, places, ground, injury words), fix wording, and fill in common objects and activities when GLiNER finds nothing.
+- **The classifier** predicts the NEISS product code. It is trained on the training-fold hospitals only.
+- Everything runs locally with no API costs. A full run can be split across machines (`--shard 1/4`), resumes after an interruption, and uses a GPU when one is available (`notebooks/v4_colab_full_run.ipynb`).
+
+**Validation (5,000 narratives, validation-fold hospitals, `python -m src.validate_v4`):**
+
+| System | Micro F1 | Macro F1 | Set match |
+|---|---|---|---|
+| v3 (Task #2) | 0.765 | 0.529 | 0.810 |
+| v4 GLiNER + rules | 0.772 | 0.528 | 0.819 |
+| Keyword lookup | 0.853 | 0.592 | 0.907 |
+| **v4 classifier** | **0.898** | **0.737** | **0.949** |
 
 **Evaluation metrics:** precision, recall, F1 (micro and macro), and exact match accuracy.
 
@@ -124,10 +135,9 @@ NEISS narrative → text preprocessing → GLiNER (extract product/object)
 
 ## 🚀 **Next Steps**
 
-- Build the v1 extraction pipeline and run it on a sample.
-- Normalize clinical shorthand and handle missing values and outliers (Milestone 1 findings).
-- Validate against `Product_1` and review cases where the label is not in the text.
-- Refine the model and evaluate it on Marsh's workers' compensation descriptions.
+- Run v4 on the 3,000-case held-out test set once (`python -m src.final_eval`) and compare it with v3.
+- Run the full 410,201-narrative v4 pipeline (`notebooks/v4_colab_full_run.ipynb`) and rerun Tasks #11 and #12 on it.
+- Test on sample workers' compensation narratives from Marsh: the classifier learned NEISS wording, so check how it transfers.
 - Stretch goal: explore other NEISS fields, including NEISS Work.
 
 ---

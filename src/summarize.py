@@ -8,7 +8,7 @@ and drug. Writes two CSVs and a markdown report to reports/.
 Run from the repo root:
 
     python -m src.summarize
-    python -m src.summarize --extractions data/processed/extractions_v2.csv --top 25
+    python -m src.summarize --extractions data/processed/extractions_v4.csv --top 25
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ ID_COLUMN = "case_number"
 OBJECT_COLUMN = "extracted_object"
 FALLBACK = "OTHER"
 
-DEFAULT_EXTRACTIONS = Path("data/processed/extractions_v2.csv")
+DEFAULT_EXTRACTIONS = Path("data/processed/extractions_v4.csv")
 DEFAULT_CLEAN = Path("data/processed/neiss2025_clean.csv")
 DEFAULT_FMT = Path("data/raw/neiss2025 1(NEISS_FMT).csv")
 DEFAULT_OUT_DIR = Path("reports")

@@ -20,4 +20,8 @@ data/processed/
 
 # IDE
 .vscode/
-message_2.html
+
+# Model weights and caches
+*.pt
+*.safetensors
+*.bin
