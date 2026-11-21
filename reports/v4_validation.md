@@ -17,6 +17,20 @@ On the 210 workplace-like products (tools, ladders, doors, glass, machinery), mi
 
 Full tables: `reports/final_eval_results.md`.
 
+## Full run (all 410,201 narratives, `notebooks/v4_colab_full_run.ipynb`)
+
+| | v2 full run (Task #10) | v4 full run |
+|---|---:|---:|
+| Hardware | laptop CPU | Colab T4 GPU |
+| Runtime | 5 h 57 min | 37.5 min |
+| Rows per second | 19.1 | 182.1 |
+| OTHER (no object found) | 52,436 (12.8%) | 20,637 (5.0%) |
+| Failed rows | 0 | 0 |
+
+- **Agreement:** GLiNER's object and the classifier's product agree on 74.3% of narratives. The rest, flagged in the `agree` column, are where the two disagree.
+- **Charts:** `reports/task11_summary_statistics.md` and `reports/task12_visualization.md` are regenerated from this run.
+- **Speedup:** the gain combines the GPU with the batching fixes. Each was not measured separately on the GPU.
+
 ## Validation
 
 All accuracy numbers come from 5,000 narratives in the 10 validation-fold hospitals (`reports/split_by_psu.csv`), scored against the NEISS product code with the same lexicon and metrics as `src/final_eval.py`. The 3,000-case test set was not used. Reproduce with `python -m src.validate_v4`.
