@@ -1,5 +1,5 @@
-# Marsh McLennan 1A - Object Detection from NEISS Injury Narratives
-   # Use Python 3.12. Python 3.15 failed to install spaCy and NumPy.
+# Marsh McLennan 1A - Object extraction from NEISS injury narratives
+# Use Python 3.12 (3.13 also works; 3.15 could not install NumPy).
 # Install with:  pip install -r requirements.txt
 
 # --- Data handling ---
@@ -7,17 +7,18 @@ pandas>=2.2
 numpy>=1.26
 openpyxl>=3.1          # reads the NEISS .xlsx
 
-# --- Visualization (EDA) ---
+# --- Model ---
+gliner==0.2.30         # zero-shot object extraction; pulls in torch and transformers
+protobuf               # needed by the GLiNER tokenizer
+sentencepiece          # needed by the GLiNER tokenizer
+scikit-learn>=1.4      # v4 lookup classifier
+
+# --- Charts and reports ---
 matplotlib>=3.8
 seaborn>=0.13
+tabulate>=0.9
 
-# --- NLP ---
-gliner>=0.2            # zero-shot extraction of the product/object (pulls in torch)
-spacy>=3.7             # preprocessing, normalization, rule-based cleanup
-   protobuf               # needed by the GLiNER tokenizer
-   sentencepiece          # needed by the GLiNER tokenizer
-# After installing, also run:  python -m spacy download en_core_web_sm
-
-# --- Notebook environment ---
+# --- Notebooks and tests ---
 jupyter>=1.0
 ipykernel>=6.29
+pytest>=8

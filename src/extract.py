@@ -1,4 +1,4 @@
-"""Extraction pipeline v1 (Milestone 2, Task #4).
+"""Object extraction pipeline (v4).
 
 Loads the cleaned NEISS data, preprocesses the narratives, runs GLiNER, and
 writes one extracted object per narrative to a CSV.
@@ -38,7 +38,7 @@ except ImportError:  # python src/extract.py
     from preprocess import preprocess, split_diagnosis
 
 DEFAULT_INPUT = Path("data/processed/neiss2025_clean.csv")
-DEFAULT_OUTPUT = Path("data/processed/extractions_v3.csv")
+DEFAULT_OUTPUT = Path("data/processed/extractions_v4.csv")
 
 # Same model, labels and threshold as reports/model_logic_plan.md and the
 # Task #5 sample notebook, so results are comparable.
@@ -78,7 +78,20 @@ PLACES = {
 }
 OTHER_PARTY_VEHICLES = {"car", "truck", "vehicle", "motor vehicle", "suv", "van", "bus"}
 IMPLANTED_DEVICES = {"prosthetic device", "prosthesis", "pacemaker", "implant"}
-DROP_SPANS = frozenset(PEOPLE | BODY_PARTS | PLACES | OTHER_PARTY_VEHICLES | IMPLANTED_DEVICES)
+# v4: ground and building materials are not products (labeling rule 4), and a span
+# ending in an injury word ("LIP LACERATION") describes the injury, not the object.
+GROUND = {"ground", "concrete", "cement", "pavement", "asphalt", "dirt", "grass", "gravel",
+          "mud", "rocks", "pond", "lake", "river", "hill", "field", "woods"}
+INJURY_WORDS = {"laceration", "lac", "fracture", "fx", "contusion", "sprain", "strain", "pain",
+                "injury", "abrasion", "bruise", "burn", "burns", "cut", "wound", "swelling", "bleeding"}
+DROP_SPANS = frozenset(PEOPLE | BODY_PARTS | PLACES | IMPLANTED_DEVICES | GROUND)
+
+# v4: a vehicle is dropped only when the text says it hit the patient or the patient
+# was on another conveyance ("STRUCK BY A CAR WHILE RIDING BIKE"). In workplace
+# narratives a truck or forklift is often the object itself, so it is kept otherwise.
+_HIT_BY_VEHICLE = re.compile(
+    r"\b(STRUCK BY|HIT BY|RUN OVER|RAN OVER|PEDESTRIAN|MVA|MVC|BICYCLE|BIKE|SCOOTER|MOPED|"
+    r"SKATEBOARD|MOTORCYCLE|CRASHED INTO|COLLIDED WITH)\b", re.IGNORECASE)
 
 # Rule 3 (Task #9): labeling rule 4 says a fall with no named object is a floor.
 FLOOR = "FLOOR"
@@ -145,8 +158,25 @@ class Extraction(NamedTuple):
 
 
 def default_keep_entity(entity: dict) -> bool:
-    """Rule 1: drop spans that are people or body parts."""
-    return entity["text"].strip().lower() not in DROP_SPANS
+    """Rule 1: drop spans that are never the product (people, body parts, places,
+    implants, ground) and spans that name an injury."""
+    span = entity["text"].strip().lower()
+    words = span.split()
+    return span not in DROP_SPANS and not (words and words[-1] in INJURY_WORDS)
+
+
+# The Task #9 to Task #2 (v2, v3) stoplist, kept so src/final_eval.py can rebuild them exactly.
+V3_DROP_SPANS = frozenset(PEOPLE | BODY_PARTS | PLACES | OTHER_PARTY_VEHICLES | IMPLANTED_DEVICES)
+
+
+def v3_keep_entity(entity: dict) -> bool:
+    return entity["text"].strip().lower() not in V3_DROP_SPANS
+
+
+def default_keep_in_context(entity: dict, text: str) -> bool:
+    """Rule 1b: drop the other party's vehicle, judged from the whole text."""
+    span = entity["text"].strip().lower()
+    return not (span in OTHER_PARTY_VEHICLES and _HIT_BY_VEHICLE.search(text))
 
 
 def default_choose_entity(entities: Sequence[dict]) -> dict:
@@ -184,13 +214,23 @@ KEYWORD_OBJECTS = (
     ("SCOOTER", re.compile(r"\bSCOOTERS?\b", re.IGNORECASE)),
     ("BICYCLE", re.compile(r"\b(BICYCLE|(?<!DIRT )BIKE)\b", re.IGNORECASE)),
     ("DRESSER", re.compile(r"\bDRESSER\b", re.IGNORECASE)),
+    # v4 activities: exercise, swimming, dancing and weight lifting were 53 of the 255
+    # validation cases v3 left as OTHER.
+    ("WEIGHT LIFTING", re.compile(r"\b(LIFTING WEIGHTS|WEIGHT ?LIFTING|DEADLIFT\w*|BENCH ?PRESS\w*|SQUATTING WEIGHTS?)\b", re.IGNORECASE)),
+    ("SWIMMING", re.compile(r"\b(SWIMMING|SWAM|DIVING INTO)\b", re.IGNORECASE)),
+    ("DANCING", re.compile(r"\b(DANCING|DANCE|BALLET|CHEER(LEADING)?)\b", re.IGNORECASE)),
+    ("EXERCISE", re.compile(r"\b(EXERCIS\w*|WORKING OUT|WORKOUT|JOGGING|YOGA|PE CLASS|GYM CLASS|STRETCHING|JUMPING JACKS|PUSH ?UPS?|SIT ?UPS?)\b", re.IGNORECASE)),
 )
 
 
-def keyword_object(text: str) -> Optional["Extraction"]:
+# The Task #2 (v3) keyword list, kept so src/final_eval.py can rebuild v3 exactly.
+V3_KEYWORD_OBJECTS = KEYWORD_OBJECTS[:7]
+
+
+def keyword_object(text: str, objects=None) -> Optional["Extraction"]:
     """Rule 5: name the earliest common household object found in the text."""
     best = None
-    for name, pattern in KEYWORD_OBJECTS:
+    for name, pattern in (KEYWORD_OBJECTS if objects is None else objects):
         m = pattern.search(text)
         if m and (best is None or m.start() < best[0]):
             best = (m.start(), name)
@@ -204,6 +244,11 @@ def keyword_then_floor(text: str) -> Optional["Extraction"]:
     return keyword_object(text) or floor_for_falls(text)
 
 
+def v3_keyword_then_floor(text: str) -> Optional["Extraction"]:
+    """The Task #2 (v3) fallback, without the v4 activity keywords."""
+    return keyword_object(text, V3_KEYWORD_OBJECTS) or floor_for_falls(text)
+
+
 @dataclass(frozen=True)
 class ExtractionConfig:
     model_name: str = DEFAULT_MODEL
@@ -211,9 +256,11 @@ class ExtractionConfig:
     threshold: float = DEFAULT_THRESHOLD
     text_field: str = "event"  # "event" = narrative without the DX section
     lowercase: bool = False  # test whether mixed case helps GLiNER
-    batch_size: int = 32
+    batch_size: int = 16
     fallback: str = FALLBACK
     keep_entity: Callable[[dict], bool] = default_keep_entity
+    # Like keep_entity, but also sees the text; None switches it off.
+    keep_in_context: Optional[Callable[[dict, str], bool]] = default_keep_in_context
     # Tidies each span's text before keep_entity sees it; None switches it off.
     clean_span: Optional[Callable[[str], str]] = default_clean_span
     choose_entity: Callable[[Sequence[dict]], dict] = default_choose_entity
@@ -242,31 +289,51 @@ def prepare_text(narratives: pd.Series, config: ExtractionConfig) -> pd.DataFram
     )
 
 
-def load_model(config: ExtractionConfig):
-    """Load GLiNER. Downloads the weights on first use."""
+def load_model(config: ExtractionConfig, device: str = "auto"):
+    """Load GLiNER. Downloads the weights on first use. device "auto" uses a GPU
+    when one is available (for example a Colab GPU runtime), otherwise the CPU."""
     try:
         from gliner import GLiNER
     except ImportError as exc:
         raise SystemExit("gliner is not installed. Run: pip install -r requirements.txt") from exc
-    return GLiNER.from_pretrained(config.model_name)
+    model = GLiNER.from_pretrained(config.model_name)
+    if device == "auto":
+        import torch
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+    if device != "cpu":
+        model = model.to(device)
+    print(f"Model on {device}")
+    return model
 
 
 def predict_entities(model, texts: list, config: ExtractionConfig, progress: bool = False) -> list:
-    """Run the model in batches. Returns one list of entity dicts per text."""
+    """Run the model in batches. Returns one list of entity dicts per text, in input order.
+
+    Speed (v4): duplicate texts run once, texts are sorted by length so a batch
+    is padded less, and GLiNER's inference() gets the real batch size. The
+    deprecated batch_predict_entities() ignores our batch size and uses 8.
+    Outputs are identical to the old path (checked on 600 validation rows).
+    """
     labels = list(config.labels)
-    batch_fn = getattr(model, "batch_predict_entities", None)
-    results: list = []
-    for start in range(0, len(texts), config.batch_size):
-        chunk = texts[start : start + config.batch_size]
-        if batch_fn is not None:
-            results.extend(batch_fn(chunk, labels, threshold=config.threshold))
-        else:
-            results.extend(
-                model.predict_entities(t, labels, threshold=config.threshold) for t in chunk
-            )
-        if progress and (start // config.batch_size) % 50 == 0:
-            print(f"  {min(start + len(chunk), len(texts)):,} / {len(texts):,}")
-    return results
+    unique = list(dict.fromkeys(texts))
+    order = sorted(range(len(unique)), key=lambda i: len(unique[i]))
+    infer = getattr(model, "inference", None)
+    found: dict = {}
+    start_time = time.perf_counter()
+    step = max(config.batch_size, 1) * 20
+    for start in range(0, len(order), step):
+        chunk = [unique[i] for i in order[start : start + step]]
+        if callable(infer):
+            ents = infer(chunk, labels, threshold=config.threshold, batch_size=config.batch_size)
+        else:  # test doubles and cached models
+            ents = [model.predict_entities(t, labels, threshold=config.threshold) for t in chunk]
+        found.update(zip(chunk, ents))
+        done = min(start + step, len(order))
+        if progress:
+            rate = done / max(time.perf_counter() - start_time, 1e-9)
+            eta = (len(order) - done) / rate if rate else 0
+            print(f"  {done:,} / {len(order):,} unique texts  {rate:.1f}/s  ETA {eta / 60:.0f} min")
+    return [found[t] for t in texts]
 
 
 def extract_objects(
@@ -282,7 +349,8 @@ def extract_objects(
     for i, entities in zip(todo, entity_lists):
         if config.clean_span is not None:
             entities = [{**e, "text": config.clean_span(e["text"])} for e in entities]
-        kept = [e for e in entities if config.keep_entity(e)]
+        kept = [e for e in entities if config.keep_entity(e)
+                and (config.keep_in_context is None or config.keep_in_context(e, texts[i]))]
         if kept:
             best = config.choose_entity(kept)
             out[i] = Extraction(best["text"].strip(), best["label"], float(best["score"]))
@@ -387,13 +455,65 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD)
     p.add_argument("--text-field", choices=["event", "normalized"], default="event")
     p.add_argument("--lowercase", action="store_true")
-    p.add_argument("--batch-size", type=int, default=32)
+    p.add_argument("--batch-size", type=int, default=16, help="texts per model batch (16-32 is fastest on CPU)")
+    p.add_argument("--shard", default=None, help="K/N: process only every N-th row starting at row K (e.g. 1/4), to split a run across machines")
+    p.add_argument("--chunk-size", type=int, default=5000, help="rows per saved chunk; a rerun skips chunks already saved")
+    p.add_argument("--device", default="auto", help="auto (GPU if available), cpu or cuda")
+    p.add_argument("--merge", type=Path, nargs="+", default=None, help="combine finished shard CSVs into --output and exit")
     p.add_argument("--log", type=Path, default=None, help="write run statistics (runtime, fallback rate, failures) to this JSON file")
     return p.parse_args(argv)
 
 
+def select_shard(df: pd.DataFrame, shard: Optional[str]) -> pd.DataFrame:
+    """Keep rows K-1, K-1+N, K-1+2N, ... for shard "K/N"."""
+    if not shard:
+        return df
+    k, n = (int(x) for x in shard.split("/"))
+    if not 1 <= k <= n:
+        raise SystemExit(f"--shard {shard}: K must be between 1 and N")
+    return df.iloc[k - 1 :: n]
+
+
+def default_shard_output(output: Path, shard: Optional[str]) -> Path:
+    if not shard:
+        return output
+    k, n = shard.split("/")
+    return output.with_name(f"{output.stem}.shard{k}of{n}{output.suffix}")
+
+
+def run_in_chunks(df, model, config, narrative_column, output: Path, chunk_size: int) -> pd.DataFrame:
+    """Run chunk by chunk, saving each to <output>_parts/. Saved chunks are reused on a
+    rerun, so an interrupted run resumes instead of starting over."""
+    parts_dir = output.with_name(output.stem + "_parts")
+    parts_dir.mkdir(parents=True, exist_ok=True)
+    parts = []
+    n_chunks = (len(df) + chunk_size - 1) // chunk_size
+    for c in range(n_chunks):
+        part = parts_dir / f"part_{c:05d}.csv"
+        if part.exists():
+            print(f"Chunk {c + 1}/{n_chunks}: already saved, skipping")
+        else:
+            print(f"Chunk {c + 1}/{n_chunks}")
+            chunk = df.iloc[c * chunk_size : (c + 1) * chunk_size]
+            result = run(chunk, model, config, narrative_column, progress=True)
+            tmp = part.with_suffix(".tmp")
+            result.to_csv(tmp, index=False)
+            tmp.replace(part)  # a chunk counts as saved only once fully written
+        parts.append(part)
+    return pd.concat((pd.read_csv(p, low_memory=False) for p in parts), ignore_index=True)
+
+
 def main(argv=None) -> None:
     args = parse_args(argv)
+    if args.merge:
+        merged = pd.concat((pd.read_csv(p, low_memory=False) for p in args.merge), ignore_index=True)
+        if ID_COLUMN in merged.columns and merged[ID_COLUMN].duplicated().any():
+            raise SystemExit("The shard files overlap: some case numbers appear twice.")
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        merged.to_csv(args.output, index=False)
+        print(f"Merged {len(args.merge)} files, {len(merged):,} rows, into {args.output}")
+        return
+
     config = ExtractionConfig(
         model_name=args.model,
         labels=tuple(s.strip() for s in args.labels.split(",") if s.strip()),
@@ -403,20 +523,21 @@ def main(argv=None) -> None:
         batch_size=args.batch_size,
     )
 
-    df = load_clean(args.input, args.sample, args.seed)
-    print(f"Loaded {len(df):,} narratives from {args.input}")
+    df = select_shard(load_clean(args.input, args.sample, args.seed), args.shard)
+    output = default_shard_output(args.output, args.shard)
+    print(f"Loaded {len(df):,} narratives from {args.input}" + (f" (shard {args.shard})" if args.shard else ""))
     if args.sample is None and len(df) > 20_000:
-        print("Running on all rows. This is slow on a CPU; use --sample 1000 to test first.")
+        print("Large run: progress is saved every --chunk-size rows, so it can be resumed.")
 
-    model = load_model(config)
+    model = load_model(config) if args.device == "auto" else load_model(config, args.device)
     start = time.perf_counter()
-    result = run(df, model, config, args.narrative_column, progress=True)
+    result = run_in_chunks(df, model, config, args.narrative_column, output, args.chunk_size)
     elapsed = time.perf_counter() - start
 
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    result.to_csv(args.output, index=False)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    result.to_csv(output, index=False)
     fallback = (result["extracted_object"] == config.fallback).sum()
-    print(f"Wrote {len(result):,} rows to {args.output}")
+    print(f"Wrote {len(result):,} rows to {output}")
     print(f"{config.fallback} (no object found): {fallback:,} ({fallback / len(result):.1%})")
     print(f"Runtime: {elapsed:,.1f} s")
     if args.log is not None:

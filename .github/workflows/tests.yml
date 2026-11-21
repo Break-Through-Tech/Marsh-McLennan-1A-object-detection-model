@@ -1,0 +1,21 @@
+# Runs the test suite on every pull request and on pushes to main.
+# The tests use fake models, so GLiNER and PyTorch are not installed here.
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: pip install pandas numpy matplotlib seaborn scikit-learn tabulate pytest
+      - name: Run tests
+        run: python -m pytest tests -q
