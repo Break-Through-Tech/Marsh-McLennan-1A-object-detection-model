@@ -591,7 +591,9 @@ def confusions(scored: pd.DataFrame, names: Dict[int, str], name: str = FINAL, t
     wrong = scored[~scored[f"{name}_correct"] & scored[f"{name}_answered"]
                    & (scored[f"{name}_code"] != UNMAPPED)]
     pairs = wrong.groupby(["product_code", f"{name}_code"]).size().rename("cases").reset_index()
-    pairs = pairs.sort_values("cases", ascending=False).head(top)
+    # Ties broken by code, with a stable sort, so the table is the same on every machine.
+    pairs = pairs.sort_values(["cases", "product_code", f"{name}_code"], ascending=[False, True, True],
+                              kind="stable").head(top)
     pairs["gold"] = pairs["product_code"].map(lambda c: names.get(int(c), str(c)))
     pairs["predicted"] = pairs[f"{name}_code"].map(lambda c: names.get(int(c), str(c)))
     return pairs[["gold", "predicted", "cases"]]
