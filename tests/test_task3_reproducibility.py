@@ -17,7 +17,7 @@ METRICS = ROOT / "reports/final_eval_metrics.csv"
 DETAILS = ROOT / "reports/final_eval_details.csv"
 
 N_TEST = 3000
-SYSTEMS = {"v1", "v2", "v3", "keyword", "majority"}
+SYSTEMS = {"v1", "v2", "v3", "v4", "classifier", "keyword", "majority"}
 MAX_FILE_BYTES = 5 * 1024 * 1024
 FORBIDDEN_PATH_PARTS = ("final_eval_cache", "data/processed/", "data/raw/", ".cache/", "huggingface")
 FORBIDDEN_SUFFIXES = (".pt", ".pth", ".bin", ".safetensors", ".onnx", ".ckpt", ".pkl", ".npy", ".npz")
@@ -67,6 +67,13 @@ def test_v3_metrics_match_committed_report():
     assert row["micro_f1"] == pytest.approx(0.739, abs=0.001)
     assert row["macro_f1"] == pytest.approx(0.471, abs=0.001)
     assert row["exact_match_product_1"] == pytest.approx(0.712, abs=0.001)
+
+
+def test_v4_classifier_metrics_match_committed_report():
+    row = pd.read_csv(METRICS).set_index("system").loc["classifier"]
+    assert row["n"] == N_TEST
+    assert row["micro_f1"] == pytest.approx(0.883, abs=0.001)
+    assert row["macro_f1"] == pytest.approx(0.711, abs=0.001)
 
 
 def test_details_has_3000_rows_matching_test_set(test_set):
